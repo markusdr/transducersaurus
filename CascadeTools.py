@@ -31,9 +31,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import openfst, re
 from collections import defaultdict
 import logging, sys, re, math
-#This is only necessary for the Sphinx D mapper. 
-#Would probably be best to remove the dependency at some point
-from SphinxTrain.s3mdef import S3Mdef
+from s3mdef import S3Mdef
 
 def setup_logger( verbose=None, loggerID="" ):
     LEVELS = {
