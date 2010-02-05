@@ -26,7 +26,7 @@ def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=True ):
     #Generate L the lexicon
     L = build_lex_example( dictfile, "cmu", "default" )
     #Generate G the grammar
-    G = Arpa2FST( lmfile, isyms=L.osyms, purgecrud=True )
+    G = Arpa2FST( lmfile, isyms=L.osyms, purgecrud=True, close=False )
     G.generate_lm()
     if connect: openfst.Connect(G.wfst)
     #Compose the L and G transducers
@@ -88,3 +88,21 @@ def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=True ):
 if __name__=="__main__":
     build_toy_cascade(sys.argv[1], sys.argv[2], sys.argv[3])
     build_lex_examples(sys.argv[2])
+    Cdet = ContextDependency(set(["x","y"]), set(["#1"]), loggerID="Cdet")
+    Cdet.generate_deterministic() 
+    Cdet.wfst.Write("exmodels/Cdet.fst")
+    Cdet.isyms.WriteText("exmodels/Cdet.isyms")
+    Cdet.osyms.WriteText("exmodels/Cdet.osyms")
+    Cdet.ssyms.WriteText("exmodels/Cdet.ssyms")
+    Cndet = ContextDependency(set(["x","y"]), set(["#1"]), invert=False, determinize=False, loggerID="Cndet")
+    Cndet.generate_non_deterministic() 
+    Cndet.wfst.Write("exmodels/Cndet.fst")
+    Cndet.isyms.WriteText("exmodels/Cndet.isyms")
+    Cndet.osyms.WriteText("exmodels/Cndet.osyms")
+    Cndet.ssyms.WriteText("exmodels/Cndet.ssyms")
+    command = "fstdraw --portrait=true --ssymbols=%s --isymbols=%s --osymbols=%s --acceptor=true < %s | grep -v \"<start>,\" | dot -Tpdf > %s" % \
+        ("exmodels/Cdet.ssyms", "exmodels/Cdet.isyms", "exmodels/Cdet.osyms", "exmodels/Cdet.fst", "exgraphs/Cdet.pdf")
+    os.system(command)
+    command = "fstdraw --portrait=true --ssymbols=%s --isymbols=%s --osymbols=%s --acceptor=true < %s | grep -v \"<start>,\" | dot -Tpdf > %s" % \
+        ("exmodels/Cndet.ssyms", "exmodels/Cndet.isyms", "exmodels/Cndet.osyms", "exmodels/Cndet.fst", "exgraphs/Cndet.pdf")
+    os.system(command)

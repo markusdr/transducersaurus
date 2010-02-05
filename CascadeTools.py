@@ -52,7 +52,7 @@ def setup_logger( verbose=None, loggerID="" ):
     return logger
 
 class Arpa2FST():
-    def __init__( self, arpalm, order=3, esym="-", start="<start>", sStart="<s>", sEnd="</s>", verbose="4", isyms=None, loggerID="default", purgecrud=True ):
+    def __init__( self, arpalm, order=3, esym="-", start="<start>", sStart="<s>", sEnd="</s>", verbose="4", isyms=None, loggerID="default", purgecrud=True, close=False ):
         #Setup logging
         self.logger = setup_logger( verbose=verbose, loggerID="CascadeTools.G.%s"%loggerID )
         #Init
@@ -65,6 +65,7 @@ class Arpa2FST():
         #This should *DEFINITELY* be done in the log semiring, as described in P. Dixon SLP 2009
         # as should all the other wfsts, and optimization operations.
         # Unfortunately the bindings do not currently support it.
+        self.close  = close
         self.wfst   = openfst.StdVectorFst()
         self.isyms  = isyms
         self._init_wfst()
@@ -74,6 +75,8 @@ class Arpa2FST():
         self._read_arpa_header()
         for i in xrange(self.arpaHeader['maxOrd']):
             self._process_Ngrams()
+        if self.close:
+            self.wfst.AddArc(self.fstate, openfst.epsilon, openfst.epsilon, 0.0, self.wfst.Start())
         self.arpalm.close()
         return
     
@@ -200,7 +203,7 @@ class ContextDependency():
         self.eps   = eps
         self.isyms = self._init_syms( basename, isyms )
         self.osyms = self._init_syms( basename, osyms )
-        self.ssyms = self._init_syms( basename, ssyms )
+        self.ssyms = openfst.SymbolTable(basename) #self._init_syms( basename, ssyms )
         self.ssyms.AddSymbol(self.start, self.state)
         self.invert = invert
         self.determinize = determinize
@@ -268,10 +271,13 @@ class ContextDependency():
         else:
             istate = self.ssyms.Find( issym )
             ostate = istate
+        if self.wfst.IsFinal(istate):
+            #We don't need aux loops on final states.
+            return
         for a in self.aux:
             isym = self.isyms.AddSymbol(a)
             osym = self.osyms.AddSymbol(a)
-            self.wfst.AddArc(istate-1, isym, osym, 0.0, ostate-1)
+            self.wfst.AddArc(istate, isym, osym, 0.0, ostate)
         return
 
     def _make_final( self, lp, rp ):
@@ -280,7 +286,7 @@ class ContextDependency():
         if self.ssyms.Find( fssym )==-1:
             raise "Requested final state does not exist: %s" % fssym
         fstate = self.ssyms.Find( fssym )
-        self.wfst.SetFinal(fstate-1,0.0)
+        self.wfst.SetFinal(fstate,0.0)
         return
     
     def _make_arc( self, lp, mp, rp ):
@@ -290,6 +296,7 @@ class ContextDependency():
              mp: middle-monophone
              rp: right-monophone
         """
+        
         issym = lp+','+mp
         ossym = mp+','+rp
         isym   = lp+'-'+mp+'+'+rp
@@ -321,8 +328,9 @@ class ContextDependency():
             ostate = self.ssyms.Find( ossym )
         isym   = self.isyms.AddSymbol( isym )
         osym   = self.osyms.AddSymbol( osym )
+        if lp==self.start: istate = self.wfst.Start()
         #Finally generate the arc
-        self.wfst.AddArc( istate-1, isym, osym, 0.0, ostate-1 )
+        self.wfst.AddArc( istate, isym, osym, 0.0, ostate )
         return
 
 
