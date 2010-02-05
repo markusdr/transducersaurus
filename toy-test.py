@@ -26,7 +26,7 @@ def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=True ):
     #Generate L the lexicon
     L = build_lex_example( dictfile, "cmu", "default" )
     #Generate G the grammar
-    G = Arpa2FST( lmfile, isyms=L.osyms, purgecrud=False )
+    G = Arpa2FST( lmfile, isyms=L.osyms, purgecrud=True )
     G.generate_lm()
     if connect: openfst.Connect(G.wfst)
     #Compose the L and G transducers
