@@ -54,7 +54,7 @@ def setup_logger( verbose=None, loggerID="" ):
     return logger
 
 class Arpa2FST():
-    def __init__( self, arpalm, order=3, esym="-", start="<start>", sStart="<s>", sEnd="</s>", verbose="4", isyms=None, loggerID="default" ):
+    def __init__( self, arpalm, order=3, esym="-", start="<start>", sStart="<s>", sEnd="</s>", verbose="4", isyms=None, loggerID="default", purgecrud=True ):
         #Setup logging
         self.logger = setup_logger( verbose=verbose, loggerID="CascadeTools.G.%s"%loggerID )
         #Init
@@ -63,6 +63,7 @@ class Arpa2FST():
         self.start  = start
         self.sStart = sStart
         self.sEnd   = sEnd
+        self.purge_crud = purgecrud
         #This should *DEFINITELY* be done in the log semiring, as described in P. Dixon SLP 2009
         # as should all the other wfsts, and optimization operations.
         # Unfortunately the bindings do not currently support it.
@@ -145,17 +146,22 @@ class Arpa2FST():
                 self.logger.info( "Current order: %d" % self.c_ord )
         return
     
+    def _purge_crud( input, output, word, weight ):
+        return True
+        
     def _write_arc( self, input, output, word, weight ):
         """
            Write and Arc.  The Allauzen 2003 paper describes an 'exact' epsilon free algorithm.
            This version ignores it in favor of simplicity.  This is a bit of a hack.
         """
 
-        #These arcs screw up the network.  It isn't 100% clear they should be ignored but...
-        if weight==-99:                          return
-        if '</s>' in output:                     output = ['</s>']
-        if input==['</s>']:                      return
-        if word==self.esym and output==['</s>']: return
+        if self.purge_crud:
+            #These arcs can screw up the network.  Eliminating them has the effect of forcing the 
+            # the resulting model into 'sentence mode'.  It also breaks stochasticity...
+            if weight==-99:                          return
+            if input==['</s>']:                      return 
+            if '</s>' in output:                     output = ['</s>']
+            if word==self.esym and output==['</s>']: return
 
         weight = math.log(10.0) * -1.0 * weight
         issym  = "_".join(input)
