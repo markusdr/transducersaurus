@@ -20,4 +20,4 @@ corresponding graphs.
 
 Building the graphs also requires the graphviz package.
 
-./toy-test.py cmudata/toy-all.dic ./cmudata/toy.3g.arpa cmudata/rm1.1000.mdef
+./toy-test.py ./cmudata/toy.3g.arpa cmudata/toy-all.dic cmudata/rm1.1000.mdef
