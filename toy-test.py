@@ -6,7 +6,7 @@ import sys, os
 def build_lex_example( dictfile, dict_type, lextype ):
     L = Lexicon( dictfile, lextype=lextype, dict_type=dict_type, loggerID="cmu.%s"%lextype )
     L.generate_lexicon_transducer()
-    fst="exmodels/L.fst"; isyms="exmodels/L.isyms"; osyms="exmodels/L.osyms"; pdf="exgraphs/L%s.pdf"%lextype
+    fst="exmodels/L.fst"; isyms="exmodels/L.isyms"; osyms="exmodels/L.osyms"; pdf="exgraphs/L-%s.pdf"%lextype
     L.wfst.Write(fst)
     L.isyms.WriteText(isyms)
     L.osyms.WriteText(osyms)
