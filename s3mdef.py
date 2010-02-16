@@ -13,7 +13,15 @@ PocketSphinx.
 __author__ = "David Huggins-Daines <dhuggins@cs.cmu.edu>"
 __version__ = "$Revision: 6646 $"
 
-from numpy import ones, empty
+def ones( dim, t, val=1.0 ):
+    """Eliminates the numpy dependency."""
+    array = [ [val for col in range(dim[1]) ] for row in range(dim[0])]                                                                  
+    return array  
+
+def empty( dim, t, val=0.0 ):
+    """Eliminates the numpy dependency."""
+    array = [ val for col in range(dim) ]
+    return array
 
 def open(file):
     return S3Mdef(file)
@@ -96,13 +104,15 @@ class S3Mdef:
         self.sseqmap = empty(self.n_phone, 'i')
         # Fill an array with -1 (which is the ID for non-emitting
         # states)
-        self.sseq = -1 * ones((len(ssidmap), self.max_emit_state+1), 'i')
+        #self.sseq = -1 * ones((len(ssidmap), self.max_emit_state+1), 'i')
+        self.sseq = ones((len(ssidmap), self.max_emit_state+1), 'i', val=-1.0)
         
         sseqid = 0
         self.pidmap = []
         for sseq, phones in ssidmap.iteritems():
             sids = map(int, sseq.split(','))
-            self.sseq[sseqid,0:len(sids)] = sids
+            #self.sseq[sseqid,0:len(sids)] = sids
+            self.sseq[sseqid] = sids
             self.pidmap.append(phones)
             for p in phones:
                 self.sseqmap[p] = sseqid
