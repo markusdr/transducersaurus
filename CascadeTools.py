@@ -29,6 +29,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 import openfst, re
+from openfst import StdVectorFst
 from collections import defaultdict
 import logging, sys, re, math
 from s3mdef import S3Mdef
@@ -66,7 +67,7 @@ class Arpa2FST():
         # as should all the other wfsts, and optimization operations.
         # Unfortunately the bindings do not currently support it.
         self.close  = close
-        self.wfst   = openfst.StdVectorFst()
+        self.wfst   = StdVectorFst()
         self.isyms  = isyms
         self._init_wfst()
         self.arpaHeader = {'maxOrd':0}
@@ -193,7 +194,7 @@ class ContextDependency():
         #Setup logging
         self.logger = setup_logger( verbose=verbose, loggerID="CascadeTools.C.%s"%loggerID )
         #Init
-        self.wfst  = openfst.StdVectorFst()
+        self.wfst  = StdVectorFst()
         self.state = self.wfst.Start()
         self.state = self.wfst.AddState()
         self.wfst.SetStart(self.state)
@@ -348,7 +349,7 @@ class Lexicon( ):
             }
         self.lextype = lextype
         self.gen_entry = self.LEXTYPES.get(self.lextype, 'default')
-        self.wfst  = openfst.StdVectorFst()
+        self.wfst  = StdVectorFst()
         self.state = self.wfst.Start()
         self.state = self.wfst.AddState()
         self.wfst.SetStart(self.state)
@@ -580,12 +581,12 @@ class SphinxMapper():
         self.logger = setup_logger( verbose=verbose, loggerID="CascadeTools.D-Sphinx" )
         #Init
         # D wfst
-        self.wfst  = openfst.StdVectorFst()
+        self.wfst  = StdVectorFst()
         self.state = self.wfst.Start()
         self.state = self.wfst.AddState()
         self.wfst.SetStart(self.state)
         # Aux wfst: may be combined but this is clearer
-        self.auxwfst  = openfst.StdVectorFst()
+        self.auxwfst  = StdVectorFst()
         self.astate   = self.auxwfst.Start()
         self.astate   = self.auxwfst.AddState()
         self.auxwfst.SetStart(self.astate)
@@ -740,7 +741,7 @@ class HTKMapper():
         self.osyms    = cisyms
         self.cosyms   = cosyms
         self.mono, self.aux = self._mono_aux_from_syms( )
-        self.wfst     = openfst.StdVectorFst( )
+        self.wfst     = StdVectorFst( )
         self.start    = self.wfst.Start( )
         self.start    = self.wfst.AddState( )
         self.wfst.SetStart(self.start)

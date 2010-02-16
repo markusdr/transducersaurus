@@ -20,22 +20,27 @@ def build_lex_examples( dictfile ):
         build_lex_example( dictfile, "cmu", lextype )
     return
 
-def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=True ):
+def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=False ):
     """Build a toy cascade from the toy CMU data and generate graphs for all the intermediate results."""
     ############################################################
     #Generate L the lexicon
     L = build_lex_example( dictfile, "cmu", "default" )
+    openfst.ArcSortOutput(L.wfst)
     #Generate G the grammar
     G = Arpa2FST( lmfile, isyms=L.osyms, purgecrud=True, close=False )
     G.generate_lm()
     if connect: openfst.Connect(G.wfst)
+    openfst.ArcSortInput(G.wfst)
     #Compose the L and G transducers
     LG = openfst.StdVectorFst()
     openfst.Compose(L.wfst,G.wfst,LG)
+    print "Finished composition"
+    LG.Write("exmodels/LG.fst")
     #Determinize the LG cascade and sort the result
     LGdet = openfst.StdVectorFst()
     openfst.Determinize(LG,LGdet)
     openfst.ArcSortInput(LGdet)
+    print "Finished determinization"
     #Generate C the context dependency transducer and sort the result
     C = ContextDependency(L.phons, L.aux, osyms=L.isyms)
     C.generate_deterministic()
@@ -62,7 +67,6 @@ def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=True ):
     G.wfst.Write("exmodels/G.fst")
     G.isyms.WriteText("exmodels/G.isyms")
     G.ssyms.WriteText("exmodels/G.ssyms")
-    LGdet.Write("exmodels/LG.fst")
     C.isyms.WriteText("exmodels/C.isyms")
     CLGdet.Write("exmodels/CLG.fst")
     C.wfst.Write("exmodels/C.fst")
@@ -86,7 +90,7 @@ def build_toy_cascade( lmfile, dictfile, mdef, connect=True, minimize=True ):
     return
 
 if __name__=="__main__":
-    build_toy_cascade(sys.argv[1], sys.argv[2], sys.argv[3])
+    build_toy_cascade(sys.argv[1], sys.argv[2], sys.argv[3], connect=True)
     build_lex_examples(sys.argv[2])
     Cdet = ContextDependency(set(["x","y"]), set(["#1"]), loggerID="Cdet")
     Cdet.generate_deterministic() 
