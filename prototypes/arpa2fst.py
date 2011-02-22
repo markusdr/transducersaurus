@@ -32,7 +32,8 @@ class ArpaLM( ):
 
     def to_tropical( self, val ):
         """
-           Convert values to the tropical semiring.
+           Convert values to the tropical semiring. 
+           Juicer has a fit if we don't do this...
         """
         logval = math.log(10.0) * float(val) * -1.0
         return logval
@@ -67,6 +68,7 @@ class ArpaLM( ):
             #Process based on n-gram order
             if self.order>0 and not line=="" and not line.startswith("\\"):
                 parts = re.split(r"\s+",line)
+                #Handle unigrams
                 if self.order==1:
                     if parts[1]=="</s>":
                         arpa_ofp.write( self.make_arc( self.eps, "</s>", "</s>", "</s>", parts[0] ) )
@@ -77,6 +79,7 @@ class ArpaLM( ):
                         if len(parts)==3: weight = parts[2]
                         arpa_ofp.write( self.make_arc( parts[1], self.eps, self.eps, self.eps, parts[2] ) )
                         arpa_ofp.write( self.make_arc( self.eps, parts[1], parts[self.order], parts[self.order], parts[0] ) )
+                #Handle middle-order N-grams
                 elif self.order<self.max_order:
                     if parts[self.order]=="</s>":
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
@@ -85,6 +88,7 @@ class ArpaLM( ):
                         if len(parts)==self.order+2: weight = parts[-1]
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order+1]), ",".join(parts[2:self.order+1]), self.eps, self.eps, weight ) )
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[1:self.order+1]), parts[self.order], parts[self.order], parts[0] ) )
+                #Handle N-order N-grams
                 elif self.order==self.max_order:
                     if parts[self.order]=="</s>":
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
@@ -92,7 +96,8 @@ class ArpaLM( ):
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[2:self.order+2]), parts[self.order], parts[self.order], parts[0] ) )
                 else:
                     pass
-            #Check the current n-gram order
+            #Check the current n-gram order and other LM meta-data
+            #NOTE: NOT super robust!!!
             if line.startswith("ngram "):
                 line = line.replace("ngram ","")
                 line = re.sub(r"=.*","", line)
