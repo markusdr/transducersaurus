@@ -1,14 +1,15 @@
 #!/usr/bin/python
 import re, math
 
-class Arpa2WFST( ):
+class ArpaLM( ):
     """
        Class to convert an ARPA-format LM to WFST format.
        
        NOTE: This class will convert arbitrary length n-gram models, but
-             it does not perform special handling of missing back-off nodes.
-       NOTE: If your model contains '-' as a regular symbol, make sure you
-             change the eps symbol - or you will be in for a world of hurt!
+             it does not perform special handling of missing back-off NODES.
+             It does add default back-off ARCS for missing back-off WEIGHTS.
+       NOTE: If your model contains '<eps>' as a regular symbol, make sure you
+             change the epsilon symbol or you will be in for a world of hurt!
     """
 
     def __init__( self, arpaifile, arpaofile, eps="<eps>", max_order=0, sil="<sil>", prefix="test", auto_order=True ):
@@ -19,6 +20,10 @@ class Arpa2WFST( ):
         self.osyms    = set([])
         self.eps      = eps
         self.sil      = sil
+        #Just in case
+        self.isyms.add(self.sil)
+        self.osyms.add(self.sil)
+        #----
         self.order    = 0
         self.tropical = True
         self.max_order = max_order
@@ -118,9 +123,8 @@ class Arpa2WFST( ):
         """
         ofp = open("%s.g.ssyms"%self.prefix,"w")
         ofp.write("%s 0\n"%self.eps)
-        ofp.write("%s 1\n"%self.sil)
         for i,sym in enumerate(self.ssyms):
-            ofp.write("%s %d\n"%(sym,i+2))
+            ofp.write("%s %d\n"%(sym,i+1))
         ofp.close()
         return
 
@@ -130,9 +134,8 @@ class Arpa2WFST( ):
         """
         ofp = open("%s.g.isyms"%self.prefix,"w")
         ofp.write("%s 0\n"%self.eps)
-        ofp.write("%s 1\n"%self.sil)
         for i,sym in enumerate(self.isyms):
-            ofp.write("%s %d\n"%(sym,i+2))
+            ofp.write("%s %d\n"%(sym,i+1))
         ofp.close()
         return
 
@@ -142,9 +145,8 @@ class Arpa2WFST( ):
         """
         ofp = open("%s.g.osyms"%self.prefix,"w")
         ofp.write("%s 0\n"%self.eps)
-        ofp.write("%s 1\n"%self.sil)
         for i,sym in enumerate(self.osyms):
-            ofp.write("%s %d\n"%(sym,i+2))
+            ofp.write("%s %d\n"%(sym,i+1))
         ofp.close()
         return
 
@@ -152,8 +154,8 @@ class Arpa2WFST( ):
 if __name__=="__main__":
     import sys, os
     #Example command:
-    # /arpa2fst.py eg.train.3g.arpa eg.train.3g.ssyms eg.train.3g.issyms eg.train.3g.osyms eg.train.3g.fst.txt eg.train.3g.fst 3
+    # /arpa2fst.py train.arpa train.fst.txt train
     
-    arpa = Arpa2WFST( sys.argv[1], sys.argv[2], prefix=sys.argv[3] )
+    arpa = ArpaLM( sys.argv[1], sys.argv[2], prefix=sys.argv[3] )
     arpa.arpa2fst( )
     arpa.print_all_syms( )
