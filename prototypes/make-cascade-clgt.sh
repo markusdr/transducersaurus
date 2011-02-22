@@ -13,8 +13,8 @@ tiedlist=${5}
 
 echo "Generating T WFST..."
 #Generate the wordlist from the dictionary.
-cat ${dict} | perl -e'print "<UNK>\n"; while(<>){ chomp; @_= split(/\s+/); print $_[0]."\n";}' > wordlist
-./silclass2fst.py wordlist ${prefix} > ${prefix}.t.fst.txt
+cat ${dict} | perl -e'print "<UNK>\n"; while(<>){ chomp; @_= split(/\s+/); print $_[0]."\n";}' > ${prefix}.wordlist
+./silclass2fst.py ${prefix}.wordlist ${prefix} > ${prefix}.t.fst.txt
 echo "Compiling T WFST..."
 #Juicer is VERY picky about the symbol order.
 #  See the perl one-liner below for details, but the basic rules are:
@@ -51,10 +51,10 @@ fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbol
 echo "Generating L WFST..."
 ./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
 echo "Compiling L WFST..."
-fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=word.syms ${prefix}.l.fst.txt | fstclosure - |  fstarcsort --sort_type=olabel - > ${prefix}.l.fst
+fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt | fstclosure - |  fstarcsort --sort_type=olabel - > ${prefix}.l.fst
 
 echo "Generating C WFST..."
-./cd2fst.py phons aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
+./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
 
 echo "Compiling C WFST..."
 #Juicer is VERY picky about symbol ordering. 

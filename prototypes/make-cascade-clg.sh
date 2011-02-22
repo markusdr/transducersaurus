@@ -48,7 +48,7 @@ echo "Compiling L WFST..."
 fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt | fstclosure - |  fstarcsort --sort_type=olabel - > ${prefix}.l.fst
 
 echo "Generating C WFST..."
-./cd2fst.py phons aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
+./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
 
 echo "Compiling C WFST..."
 #Juicer is VERY picky about symbol ordering. 

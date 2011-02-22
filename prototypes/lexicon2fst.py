@@ -76,14 +76,14 @@ class Lexicon( ):
         return
             
     def print_phones( self ):
-        phones_fp = open("phons","w")
+        phones_fp = open("%s.phons"%self.prefix,"w")
         for p in self.phones:
             phones_fp.write("%s\n"%p)
         phones_fp.close()
         return
 
     def print_aux( self ):
-        aux_fp = open("aux","w")
+        aux_fp = open("%s.aux"%self.prefix,"w")
         for a in self.aux:
             aux_fp.write("%s\n"%a)
         aux_fp.close()
