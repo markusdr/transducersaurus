@@ -1,4 +1,5 @@
-2010-02-03
+README.txt
+2011-02-22
 Josef Novak
 
 Transducersaurus is a module which builds component WFSTs 
@@ -7,17 +8,9 @@ classes suitable for building language model transducers from ARPA
 format LMs, lexicon transducers, context-dependency transducers and acoustic 
 model to context-dependency mappers.
 
-It supports both HTK and Sphinx format pronunciation dictionaries 
-as well as AMs.  However the latter may be dependent on the 
-decoder.
+It provides both simple python prototypes and more robust as well as much faster
+C++ implementations of all the basic WFST algorithms needed to generate a standard 
+LVCSR WFST cascade. It supports cascade generation for both the Juicer and TCubed 
+WFST decoders.  Sphinx support is on the way.
 
-It depends on the following python modules:
-pyopenfst
-
-Along with the test data you should be able to run the 
-toy-test.py build script to build some working examples and 
-corresponding graphs.  
-
-Building the graphs also requires the graphviz package.
-
-./toy-test.py ./cmudata/toy.3g.arpa cmudata/toy-all.dic cmudata/rm1.1000.mdef
+See the prototypes directory for more information.
