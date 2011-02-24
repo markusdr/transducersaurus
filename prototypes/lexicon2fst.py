@@ -32,6 +32,11 @@ class Lexicon( ):
             entry = entry.strip()
             phones = re.split(r"\s+",entry)
             word   = phones.pop(0)
+            #Remove any alternative pronunciation markers
+            # if we don't do this, and the user forgets to 
+            # do it himself the alternatives will be discarded
+            # during the L*G composition phase.
+            word   = re.sub(r"\([0-9]+\)","",word)
             pron   = " ".join(phones)
             self.prons[pron] += 1
             
