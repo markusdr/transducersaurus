@@ -6,7 +6,7 @@ class Lexicon( ):
 
     """Build a lexicon transducer."""
 
-    def __init__( self, dictfile, prefix="lexicon" ):
+    def __init__( self, dictfile, prefix="lexicon", lextype="htk" ):
         """Initialize some basic variables."""
         self.dictfile   = dictfile
         self.prons   = defaultdict(int)
@@ -18,6 +18,25 @@ class Lexicon( ):
         self.start   = 0
         self.last_s  = 1
         self.prefix  = prefix
+        self.lextype = "sphinx"
+    
+    def _positionalize( self, pron ):
+        """
+        Convert monophones to positional monophones
+        as used in most Sphinx AMs.
+        """
+        pos_pron = []
+        if len(pron)==1:
+            pos_pron.append("%s_s"%pron[0])
+            return pos_pron
+        pos_pron.append("%s_b"%pron[0])
+        if len(pron)==2:
+            pos_pron.append("%s_e"%pron[1])
+            return pos_pron
+        for i in xrange(1,len(pron)-1):
+            pos_pron.append("%s_i"%pron[i])
+        pos_pron.append("%s_e"%pron[-1])
+        return pos_pron
 
     def generate_lexicon_transducer( self ):
         """
@@ -36,8 +55,11 @@ class Lexicon( ):
             # if we don't do this, and the user forgets to 
             # do it himself the alternatives will be discarded
             # during the L*G composition phase.
-            word   = re.sub(r"\([0-9]+\)","",word)
+            word   = re.sub(r"\([0-9]+\)","",word) 
+            if self.lextype=="sphinx": 
+                phones = self._positionalize( phones )
             pron   = " ".join(phones)
+            
             self.prons[pron] += 1
             
             print self.start, self.last_s, phones[0], word 
@@ -102,7 +124,7 @@ class Lexicon( ):
 
 if __name__=="__main__":
     import sys
-    L = Lexicon( sys.argv[1], prefix=sys.argv[2] )
+    L = Lexicon( sys.argv[1], prefix=sys.argv[2], lextype="htk" )
     L.generate_lexicon_transducer()
     L.print_all_syms()
     L.print_aux()
