@@ -18,7 +18,7 @@ class Lexicon( ):
         self.start   = 0
         self.last_s  = 1
         self.prefix  = prefix
-        self.lextype = "sphinx"
+        self.lextype = lextype
     
     def _positionalize( self, pron ):
         """
