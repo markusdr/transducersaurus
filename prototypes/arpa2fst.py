@@ -12,7 +12,7 @@ class ArpaLM( ):
              change the epsilon symbol or you will be in for a world of hurt!
     """
 
-    def __init__( self, arpaifile, arpaofile, eps="<eps>", max_order=0, sil="<sil>", prefix="test", auto_order=True ):
+    def __init__( self, arpaifile, arpaofile, eps="<eps>", max_order=0, sil="<sil>", prefix="test", sb="<s>", se="</s>", auto_order=True ):
         self.arpaifile = arpaifile
         self.arpaofile = arpaofile
         self.ssyms    = set([])
@@ -20,6 +20,8 @@ class ArpaLM( ):
         self.osyms    = set([])
         self.eps      = eps
         self.sil      = sil
+        self.sb       = sb
+        self.se       = se
         #Just in case
         self.isyms.add(self.sil)
         self.osyms.add(self.sil)
@@ -62,7 +64,7 @@ class ArpaLM( ):
 
         arpa_ifp = open(self.arpaifile, "r")
         arpa_ofp = open(self.arpaofile, "w")
-        arpa_ofp.write(self.make_arc( "<start>", "<s>", "<s>", "<s>", 0.0 ))
+        arpa_ofp.write(self.make_arc( "<start>", self.sb, self.sb, self.sb, 0.0 ))
         for line in arpa_ifp:
             line = line.strip()
             #Process based on n-gram order
@@ -70,10 +72,10 @@ class ArpaLM( ):
                 parts = re.split(r"\s+",line)
                 #Handle unigrams
                 if self.order==1:
-                    if parts[1]=="</s>":
-                        arpa_ofp.write( self.make_arc( self.eps, "</s>", "</s>", "</s>", parts[0] ) )
-                    elif parts[1]=="<s>":
-                        arpa_ofp.write( self.make_arc( "<s>", self.eps, self.eps, self.eps, parts[2] ) )
+                    if parts[1]==self.se:
+                        arpa_ofp.write( self.make_arc( self.eps, self.se, self.se, self.se, parts[0] ) )
+                    elif parts[1]==self.sb:
+                        arpa_ofp.write( self.make_arc( self.sb, self.eps, self.eps, self.eps, parts[2] ) )
                     else:
                         weight = "0.0"
                         if len(parts)==3: weight = parts[2]
@@ -81,7 +83,7 @@ class ArpaLM( ):
                         arpa_ofp.write( self.make_arc( self.eps, parts[1], parts[self.order], parts[self.order], parts[0] ) )
                 #Handle middle-order N-grams
                 elif self.order<self.max_order:
-                    if parts[self.order]=="</s>":
+                    if parts[self.order]==self.se:
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
                     else :
                         weight = "0.0"
@@ -90,7 +92,7 @@ class ArpaLM( ):
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[1:self.order+1]), parts[self.order], parts[self.order], parts[0] ) )
                 #Handle N-order N-grams
                 elif self.order==self.max_order:
-                    if parts[self.order]=="</s>":
+                    if parts[self.order]==self.se:
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), parts[self.order], parts[self.order], parts[self.order], parts[0] ) )
                     else:
                         arpa_ofp.write( self.make_arc( ",".join(parts[1:self.order]), ",".join(parts[2:self.order+2]), parts[self.order], parts[self.order], parts[0] ) )

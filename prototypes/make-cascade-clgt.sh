@@ -11,11 +11,6 @@ prefix=${3}
 hmmdefs=${4}
 tiedlist=${5}
 
-echo "Generating T WFST..."
-#Generate the wordlist from the dictionary.
-cat ${dict} | perl -e'print "<UNK>\n"; while(<>){ chomp; @_= split(/\s+/); print $_[0]."\n";}' > ${prefix}.wordlist
-./silclass2fst.py ${prefix}.wordlist ${prefix} > ${prefix}.t.fst.txt
-echo "Compiling T WFST..."
 #Juicer is VERY picky about the symbol order.
 #  See the perl one-liner below for details, but the basic rules are:
 #  **Unique words (not pronunciations) MUST appear in the EXACT same order as the reference
@@ -25,25 +20,17 @@ echo "Compiling T WFST..."
 #  It's crazy but it's the only way it works.
 #  Other problems may occur depending on the value of LC_ALL
 #   which defines the sort order on your linux machine.
-cat ${dict} | perl -e' 
-my $cnt=1; 
-my %syms; 
-print "<eps> 0\n"; 
-while(<>){ 
-  chomp; 
-  @_ = split(/\s+/); 
-  if( ! exists $syms{$_[0]} ){ 
-    print $_[0]."\t".$cnt."\n"; 
-    $syms{$_[0]} = 
-    $cnt; $cnt++;
-  } 
-} 
-print "<UNK> ".$cnt."\n";' > ${prefix}.word.syms
+echo "Generating the word symbols list..."
+./check-vocab.py ${dict} ${arpa} ${prefix}
 
+cat ${prefix}.word.syms | perl -e'while(<>){ next if ${.}==1; chomp; @_= split(/\s+/); print $_[0]."\n";}' > ${prefix}.wordlist
+
+echo "Generating T WFST..."
+./silclass2fst.py ${prefix}.wordlist ${prefix} > ${prefix}.t.fst.txt
+echo "Compiling T WFST..."
 fstcompile --arc_type=log --isymbols=${prefix}.word.syms --osymbols=${prefix}.word.syms ${prefix}.t.fst.txt > ${prefix}.t.fst
 
 echo "Generating G WFST..."
-#We'll skip proper <UNK> handling for now
 ./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
 echo "Compiling G WFST..."
 fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | fstarcsort --sort_type=ilabel - > ${prefix}.g.fst

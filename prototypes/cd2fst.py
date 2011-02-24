@@ -7,7 +7,7 @@ class ContextDependency( ):
     Use an HTK format tiedlist to handle logical->physical triphone mapping.
     """
 
-    def __init__( self, phons, aux, tiedlist, start="<start>", prefix="cd", eps="<eps>", sil="sil" ):
+    def __init__( self, phons, aux, tiedlist=None, start="<start>", prefix="cd", eps="<eps>", sil="sil" ):
         self.phons_f  = phons
         self.sil      = sil
         self.phons    = set([])
@@ -17,7 +17,7 @@ class ContextDependency( ):
         self.prefix   = prefix
         self.start    = start
         self.ssyms    = set([])
-        self.isyms    = [self.eps]
+        self.isyms    = set([])
         self.tied     = {}
         self.osyms    = set([])
         self.tiedlist = tiedlist
@@ -40,6 +40,8 @@ class ContextDependency( ):
 
     def _load_tiedlist( self ):
         """Load the tiedlist.  Track the ids."""
+        if self.tiedlist==None:
+            return
         fp = open(self.tiedlist,"r")
 
         for line in fp:
@@ -47,7 +49,7 @@ class ContextDependency( ):
             parts = line.split()
             if len(parts)==1:
                 self.tied[parts[0]]  = parts[0]
-                self.isyms.append(parts[0])
+                self.isyms.add(parts[0])
             elif len(parts)==2:
                 self.tied[parts[0]] = parts[1]
         fp.close()
@@ -60,6 +62,8 @@ class ContextDependency( ):
           If all else fails slot in an <eps> arc - however 
            it is probably better to raise an error in this case.
         """
+        if self.tiedlist==None:
+            return lp+"-"+mp+"+"+rp
         
         if lp+"-"+mp+"+"+rp in self.tied:
             return self.tied[lp+"-"+mp+"+"+rp]
@@ -98,8 +102,9 @@ class ContextDependency( ):
         self.osyms.add(osym)
 
         if lp==self.start: isym  = self.sil
+        self.isyms.add(isym)
         if lp==self.start: issym = self.start
-        
+
         print issym, ossym, isym, osym
         return
 
@@ -148,8 +153,9 @@ class ContextDependency( ):
     def print_isyms( self ):
         isym_f   = "%s.c.isyms" % self.prefix
         isyms_fp = open( isym_f,"w" )
+        isyms_fp.write("%s %d\n" % (self.eps,0))
         for i,sym in enumerate(self.isyms):
-            isyms_fp.write("%s %d\n" % (sym, i))
+            isyms_fp.write("%s %d\n" % (sym, i+1))
         isyms_fp.close()
         return
 
@@ -157,9 +163,8 @@ class ContextDependency( ):
         osym_f   = "%s.c.osyms" % self.prefix
         osyms_fp = open( osym_f,"w" )
         osyms_fp.write("%s %d\n" % (self.eps, 0))
-        osyms_fp.write("%s %d\n" % (self.sil, 1))
         for i,sym in enumerate(self.osyms):
-            osyms_fp.write("%s %d\n" % (sym, i+2))
+            osyms_fp.write("%s %d\n" % (sym, i))
         osyms_fp.close()
         return
 
@@ -180,6 +185,9 @@ class ContextDependency( ):
 
 if __name__=="__main__":
     import sys
-    C = ContextDependency( sys.argv[1], sys.argv[2], sys.argv[3], prefix=sys.argv[4] )
+    if len(sys.argv)==5:
+        C = ContextDependency( sys.argv[1], sys.argv[2], tiedlist=sys.argv[3], prefix=sys.argv[4] )
+    else:
+        C = ContextDependency( sys.argv[1], sys.argv[2], prefix=sys.argv[3] )
     C.generate_deterministic()
     C.print_all_syms()

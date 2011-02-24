@@ -12,7 +12,7 @@ hsyms=${4}
 hmmdefs=${5}
 
 #dump the sil tokens, fix the '<s>'/'</s>' mismatching...
-/usr/bin/juicer \
+juicer \
     -inputFormat htk \
     -lmScaleFactor 13 \
     -inputFName jtune/tune-ju-htk-1.scp \

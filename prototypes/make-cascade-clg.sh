@@ -13,7 +13,7 @@ hmmdefs=${4}
 tiedlist=${5}
 
 #Juicer is VERY picky about the symbol order.
-#  See the perl one-liner below for details, but the basic rules are:
+#  See the python script below for details, but the basic rules are:
 #  **Unique words (not pronunciations) MUST appear in the EXACT same order as the reference
 #    pronunciation dictionary.
 #  **Any symbols that are NOT in the reference dictionary MUST come at the
@@ -21,23 +21,9 @@ tiedlist=${5}
 #  It's crazy but it's the only way it works.
 #  Other problems may occur depending on the value of LC_ALL
 #   which defines the sort order on your linux machine.
-cat ${dict} | perl -e' 
-my $cnt=1; 
-my %syms; 
-print "<eps> 0\n"; 
-while(<>){ 
-  chomp; 
-  @_ = split(/\s+/); 
-  if( ! exists $syms{$_[0]} ){ 
-    print $_[0]."\t".$cnt."\n"; 
-    $syms{$_[0]} = 
-    $cnt; $cnt++;
-  } 
-} 
-print "<UNK> ".$cnt."\n";' > ${prefix}.word.syms
-
+echo "Generating the word symbols list..."
+./check-vocab.py ${dict} ${arpa} ${prefix}
 echo "Generating G WFST..."
-#We'll skip proper <UNK> handling for now
 ./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
 echo "Compiling G WFST..."
 fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | fstarcsort --sort_type=ilabel - > ${prefix}.g.fst
