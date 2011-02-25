@@ -119,8 +119,7 @@ class ContextDependency( ):
         issym = lp+','+rp
 
         for a in self.aux:
-            #print issym, issym, self.eps, a
-            print issym, issym, a, a
+            print issym, issym, self.eps, a
         return
 
     def generate_deterministic( self ):
