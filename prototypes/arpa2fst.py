@@ -79,7 +79,7 @@ class ArpaLM( ):
                     else:
                         weight = "0.0"
                         if len(parts)==3: weight = parts[2]
-                        arpa_ofp.write( self.make_arc( parts[1], self.eps, self.eps, self.eps, parts[2] ) )
+                        arpa_ofp.write( self.make_arc( parts[1], self.eps, self.eps, self.eps, weight ) )
                         arpa_ofp.write( self.make_arc( self.eps, parts[1], parts[self.order], parts[self.order], parts[0] ) )
                 #Handle middle-order N-grams
                 elif self.order<self.max_order:
