@@ -24,39 +24,35 @@ tiedlist=${5}
 #   which defines the sort order on your linux machine.
 
 echo "Generating the word symbols list..."
-./check-vocab.py ${dict} ${arpa} ${prefix}
+python2.5 ./check-vocab.py ${dict} ${arpa} ${prefix}
 echo "Generating G WFST..."
-./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
+python2.5 ./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
 
 echo "Generating L WFST..."
-./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
+python2.5 ./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
 
 #Juicer is VERY picky about symbol ordering. 
 #  Input symbols must EXACTLY match the order in which the 
 #  ~h definitions appear in the hmmdefs file (NOT the tiedlist file [they are often slightly different])
 grep "^~h " ${hmmdefs} | perl -e'my $cnt=1; print "<eps> 0\n"; while(<>){chomp; s/^~h \"//; s/\"$//; print $_." ".$cnt."\n"; $cnt++;}' > ${prefix}.hmm.syms
 
-
-
-
 echo "Compiling L WFST..."
-echo "fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt | fstclosure - |  fstdeterminize - | fstarcsort --sort_type=ilabel - > ${prefix}.l.fst"
-fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt  |  fstdeterminize - | fstminimize - | fstclosure - | fstarcsort --sort_type=ilabel - > ${prefix}.l.fst
+fstcompile --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt  |  fstclosure - | fstdeterminize - | fstarcsort --sort_type=ilabel - > ${prefix}.l.fst
 echo "Generating C WFST..."
-./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
+python2.5 ./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
 echo "Compiling C WFST..."
-echo "fstcompile --arc_type=log --ssymbols=${prefix}.c.ssyms --isymbols=${prefix}.hmm.syms --osymbols=${prefix}.l.isyms ${prefix}.c.fst.txt | fstinvert - | fstdeterminize - | fstinvert - | fstarcsort --sort_type=olabel - > ${prefix}.c.fst"
-fstcompile --arc_type=log --ssymbols=${prefix}.c.ssyms --isymbols=${prefix}.hmm.syms --osymbols=${prefix}.l.isyms ${prefix}.c.fst.txt | fstinvert - | fstdeterminize - | fstinvert - | fstarcsort --sort_type=olabel - > ${prefix}.c.fst
+fstcompile --ssymbols=${prefix}.c.ssyms --isymbols=${prefix}.hmm.syms --osymbols=${prefix}.l.isyms ${prefix}.c.fst.txt | fstinvert - | fstdeterminize - | fstinvert - | fstarcsort --sort_type=olabel - > ${prefix}.c.fst
 
 
-echo "../openfst/openfst-1.2.6/src/bin/fstcompose ${prefix}.c.fst ${prefix}.l.fst | fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=cl.rlbl.txt - > ${prefix}.cl.lkhd.fst"
-../openfst/openfst-1.2.6/src/bin/fstcompose ${prefix}.c.fst ${prefix}.l.fst | fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=cl.rlbl.txt - > ${prefix}.cl.lkhd.fst
+echo "fstcompose ${prefix}.c.fst ${prefix}.l.fst | fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=cl.rlbl.txt - > ${prefix}.cl.lkhd.fst"
+fstcompose ${prefix}.c.fst ${prefix}.l.fst | fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=cl.rlbl.txt - > ${prefix}.cl.lkhd.fst
 echo "Compiling G WFST..."
-echo "fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | ../openfst/openfst-1.2.6/src/bin/fstrelabel --relabel_ipairs=cl.rlbl.txt - | fstarcsort - > ${prefix}.g.fst"
-fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | ../openfst/openfst-1.2.6/src/bin/fstrelabel --relabel_ipairs=cl.rlbl.txt - | fstarcsort - > ${prefix}.g.rlbl.fst
+fstcompile --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | fstrelabel --relabel_ipairs=cl.rlbl.txt - | fstarcsort - > ${prefix}.g.rlbl.fst
 echo "Composing with lookahead..."
-echo "../openfst/openfst-1.2.6/src/bin/fstcompose ${prefix}.cl.lkhd.fst ${prefix}.g.rlbl.fst > ${prefix}.clg.lkhd.fst"
-../openfst/openfst-1.2.6/src/bin/fstcompose ${prefix}.cl.lkhd.fst ${prefix}.g.rlbl.fst > ${prefix}.clg.lkhd.fst
+echo "fstcompose ${prefix}.cl.lkhd.fst ${prefix}.g.rlbl.fst > ${prefix}.clg.lkhd.fst"
+fstcompose ${prefix}.cl.lkhd.fst ${prefix}.g.rlbl.fst | fstprint - > ${prefix}.clg.lkhd.fst.txt
+echo "Compiling to AT&T format..."
+fsmcompile -t ${prefix}.clg.lkhd.fst.txt > ${prefix}.clg.lkhd.fsm
 
 echo "Done building cascade.  Run juicer test with:"
 echo "./juicer-test.sh ${prefix}.clg.fst.txt ${dict} ${prefix}.word.syms ${prefix}.hmm.syms ${hmmdefs}"
