@@ -24,12 +24,12 @@ tiedlist=${5}
 #   which defines the sort order on your linux machine.
 
 echo "Generating the word symbols list..."
-python2.5 ./check-vocab.py ${dict} ${arpa} ${prefix}
+./check-vocab.py ${dict} ${arpa} ${prefix}
 echo "Generating G WFST..."
-python2.5 ./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
+./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
 
 echo "Generating L WFST..."
-python2.5 ./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
+./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
 
 #Juicer is VERY picky about symbol ordering. 
 #  Input symbols must EXACTLY match the order in which the 
@@ -39,7 +39,7 @@ grep "^~h " ${hmmdefs} | perl -e'my $cnt=1; print "<eps> 0\n"; while(<>){chomp; 
 echo "Compiling L WFST..."
 fstcompile --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt  |  fstclosure - | fstdeterminize - | fstarcsort --sort_type=ilabel - > ${prefix}.l.fst
 echo "Generating C WFST..."
-python2.5 ./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
+./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
 echo "Compiling C WFST..."
 fstcompile --ssymbols=${prefix}.c.ssyms --isymbols=${prefix}.hmm.syms --osymbols=${prefix}.l.isyms ${prefix}.c.fst.txt | fstinvert - | fstdeterminize - | fstinvert - | fstarcsort --sort_type=olabel - > ${prefix}.c.fst
 
