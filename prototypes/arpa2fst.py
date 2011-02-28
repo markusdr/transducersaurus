@@ -37,7 +37,7 @@ class ArpaLM( ):
            Convert values to the tropical semiring. 
            Juicer has a fit if we don't do this...
         """
-        logval = math.log(10.0) * float(val) * -1.0
+        logval = float(val) * -1.0
         return logval
 
     def make_arc( self, istate, ostate, isym, osym, weight=0.0 ):
