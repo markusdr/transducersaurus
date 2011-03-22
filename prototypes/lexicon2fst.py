@@ -6,11 +6,12 @@ class Lexicon( ):
 
     """Build a lexicon transducer."""
 
-    def __init__( self, dictfile, prefix="lexicon", lextype="htk" ):
+    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL" ):
         """Initialize some basic variables."""
         self.dictfile   = dictfile
         self.prons   = defaultdict(int)
         self.eps     = "<eps>"
+        self.sil     = sil
         self.aux     = set([])
         self.phones  = set([])
         self.isyms   = set([])
@@ -27,8 +28,12 @@ class Lexicon( ):
         """
         pos_pron = []
         if len(pron)==1:
-            pos_pron.append("%s_s"%pron[0])
-            return pos_pron
+            if pron[0]==self.sil:
+                pos_pron.append(self.sil)
+                return pos_pron
+            else:
+                pos_pron.append("%s_s"%pron[0])
+                return pos_pron
         pos_pron.append("%s_b"%pron[0])
         if len(pron)==2:
             pos_pron.append("%s_e"%pron[1])
@@ -124,7 +129,7 @@ class Lexicon( ):
 
 if __name__=="__main__":
     import sys
-    L = Lexicon( sys.argv[1], prefix=sys.argv[2], lextype="htk" )
+    L = Lexicon( sys.argv[1], prefix=sys.argv[2], lextype=sys.argv[3] )
     L.generate_lexicon_transducer()
     L.print_all_syms()
     L.print_aux()
