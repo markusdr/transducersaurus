@@ -23,6 +23,7 @@ class ContextDependency2FST {
 	
 public:
 	std::string	       eps;
+	std::string		   sil;
 	std::string	       start;
 	fst::SymbolTable*  ssyms;
 	fst::SymbolTable*  isyms;
@@ -36,6 +37,8 @@ public:
 	ContextDependency2FST( const char* cd, const char* aux );
 	
 	ContextDependency2FST( std::set<string> cd, std::set<string> aux );
+	
+	ContextDependency2FST( std::set<string> cd, std::set<string> aux, fst::SymbolTable* iosymbols );
 	
 	void generateDeterministic( );
 	
@@ -73,7 +76,8 @@ public:
 	  Why???: ContextDependency2FST( cd, aux ) {} */
 	
 	ContextDependency2TropicalFST( std::set<string> cd, std::set<string> aux ) : ContextDependency2FST( cd, aux ) {}
-
+	
+	ContextDependency2TropicalFST( std::set<string> cd, std::set<string> aux, fst::SymbolTable* iosymbols );	
 protected:
 	virtual void make_arc( string lp, string mp, string rp );
 	

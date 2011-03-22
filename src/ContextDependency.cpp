@@ -77,6 +77,40 @@ ContextDependency2FST::ContextDependency2FST( set<string> cd, set<string> aux ){
 	osyms->AddSymbol(eps,0);
 }
 
+ContextDependency2FST::ContextDependency2FST( set<string> cd, set<string> aux, SymbolTable* iosymbols ){
+	//Constructor for text files
+	phones = cd;
+	aux_syms = aux;
+	//Set default values
+	eps   = "<eps>";
+	start = "<start>";
+	ssyms = new SymbolTable("ssyms");
+	isyms = new SymbolTable("isyms");
+	osyms = iosymbols;
+	cdfst.AddState(); 
+	cdfst.SetStart(0);
+	ssyms->AddSymbol(start,0);
+	isyms->AddSymbol(eps,0);
+	osyms->AddSymbol(eps,0);
+}
+
+ContextDependency2TropicalFST::ContextDependency2TropicalFST( set<string> cd, set<string> aux, SymbolTable* iosymbols ){
+	//Constructor for text files
+	phones = cd;
+	aux_syms = aux;
+	//Set default values
+	eps   = "<eps>";
+	start = "<start>";
+	ssyms = new SymbolTable("ssyms");
+	isyms = new SymbolTable("isyms");
+	osyms = iosymbols;
+	cdfst.AddState(); 
+	cdfst.SetStart(0);
+	ssyms->AddSymbol(start,0);
+	isyms->AddSymbol(eps,0);
+	osyms->AddSymbol(eps,0);
+}
+
 void ContextDependency2FST::init( const char* cd, const char* aux ) {
 	//Read in a list of phonemes and a list of auxiliary symbols
 	//Expects one symbol per line!!!
@@ -124,7 +158,7 @@ void ContextDependency2FST::make_arc( string lp, string mp, string rp ){
 	string isym  = lp+"-"+mp+"+"+rp;
 	string osym  = rp;
 	if( lp.compare(start)==0 ){
-		isym  = eps;
+		isym  = sil;
 		issym = start;
 	}
 	if( ssyms->Find(issym)==-1 )
@@ -156,7 +190,7 @@ void ContextDependency2FST::make_aux( string lp, string rp ){
 		cdfst.AddArc( 
 					 ssyms->Find(issym), 
 					 LogArc(
-							isyms->Find(*au), 
+							0, 
 							osyms->Find(*au), 
 							LogArc::Weight::One(), 
 							ssyms->Find(issym)
@@ -183,16 +217,16 @@ void ContextDependency2FST::generateDeterministic( ){
 	set<string>::iterator lp;
 	for( lp=phones.begin(); lp!=phones.end(); lp++ ){
 		//Initial arcs
-		make_arc( start, eps, *lp );
+		make_arc( start, sil, *lp );
 		//Monophone arcs
-		make_arc( eps, *lp, eps );
-		make_final( *lp, eps );
+		make_arc( sil, *lp, sil );
+		make_final( *lp, sil );
 		set<string>::iterator mp;
 		for( mp=phones.begin(); mp!=phones.end(); mp++ ){
 			//Initial to Internal arcs
-			make_arc( eps, *lp, *mp );
+			make_arc( sil, *lp, *mp );
 			//Internal to Final arcs
-			make_arc( *lp, *mp, eps );
+			make_arc( *lp, *mp, sil );
 			set<string>::iterator rp;
 			for( rp=phones.begin(); rp!=phones.end(); rp++ ){
 				//Internal to Internal arcs
@@ -214,19 +248,19 @@ void ContextDependency2FST::generateDeterministicAux( ){
 	set<string>::iterator lp;
 	for( lp=phones.begin(); lp!=phones.end(); lp++ ){
 		//Initial arcs
-		make_arc( start, eps, *lp );
+		make_arc( start, sil, *lp );
 		//Monophone arcs
-		make_arc( eps, *lp, eps );
+		make_arc( sil, *lp, sil );
 		//Auxiliary arcs
-		make_aux( eps, *lp );
+		make_aux( sil, *lp );
 		//Set final states
-		make_final( *lp, eps );
+		make_final( *lp, sil );
 		set<string>::iterator mp;
 		for( mp=phones.begin(); mp!=phones.end(); mp++ ){
 			//Initial to Internal arcs
-			make_arc( eps, *lp, *mp );
+			make_arc( sil, *lp, *mp );
 			//Internal to Final arcs
-			make_arc( *lp, *mp, eps );
+			make_arc( *lp, *mp, sil );
 			//Auxiliary symbols
 			make_aux( *lp, *mp );
 			set<string>::iterator rp;
