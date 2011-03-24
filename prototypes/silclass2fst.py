@@ -20,7 +20,10 @@ class Silclass( ):
         vocab_fp = open( self.vocabfile,"r" )
         for line in vocab_fp:
             line = line.strip()
-            self.vocab.add(line)
+            sym, id = re.split(r"\s+",line)
+            if int(id)==0:
+                continue
+            self.vocab.add(sym)
         vocab_fp.close()
         return
 
@@ -31,16 +34,18 @@ class Silclass( ):
     def generate_silclass( self ):
         """Generate the silence class transducer."""
         count = 1
+        silclass_fp = open("PREFIX.t.fst.txt".replace("PREFIX",self.prefix),"w")
         for word in self.vocab:
             if word==self.sil:
                 continue
-            print 0, count, word, word
-            print count, count, self.eps, self.sil, self.log2tropical(self.silperc)
-            print count, 0, self.eps, self.eps, self.log2tropical(self.nosilperc)
+            silclass_fp.write("%d %d %s %s\n" % (0, count, word, word))
+            silclass_fp.write("%d %d %s %s %f\n" % (count, count, self.eps, self.sil, self.log2tropical(self.silperc)))
+            silclass_fp.write("%d %d %s %s %f\n" % (count, 0, self.eps, self.eps, self.log2tropical(self.nosilperc)))
             self.isyms.add(word)
             self.osyms.add(word)
             count += 1
-        print 0
+        silclass_fp.write("0\n")
+        silclass_fp.close()
         return
 
     def print_isyms( self ):
