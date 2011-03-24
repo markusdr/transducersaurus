@@ -7,14 +7,16 @@ class ContextDependency( ):
     Use an HTK format tiedlist to handle logical->physical triphone mapping.
     """
 
-    def __init__( self, phons, aux, tiedlist=None, start="<start>", prefix="cd", eps="<eps>", sil="sil" ):
+    def __init__( self, phons, aux, tiedlist=None, start="<start>", prefix="cd", eps="<eps>", sil="sil", auxout=False ):
         self.phons_f  = phons
         self.sil      = sil
+        self.auxout   = auxout
         self.phons    = set([])
         self.aux      = set([])
         self.aux_f    = aux
         self.eps      = eps
         self.prefix   = prefix
+        self.cd_ofp   = open("PREFIX.c.fst.txt".replace("PREFIX",prefix),"w")
         self.start    = start
         self.ssyms    = set([])
         self.isyms    = set([])
@@ -25,6 +27,12 @@ class ContextDependency( ):
         self._load_list( self.phons_f, "phons" )
         self._load_list( self.aux_f, "aux" )
         self._load_tiedlist( )
+        self._init_mapper( )
+
+    def _init_mapper( self ):
+        if self.auxout==True:
+            self.mapper_ofp = open("PREFIX.d.fst.txt".replace("PREFIX",self.prefix),"w")
+        return
 
     def _load_list( self, filename, ltype ):
         """Load a list of phonemes or aux symbols.  One per line."""
@@ -62,27 +70,36 @@ class ContextDependency( ):
           If all else fails slot in an <eps> arc - however 
            it is probably better to raise an error in this case.
         """
-        if self.tiedlist==None:
-            return lp+"-"+mp+"+"+rp
-        
-        if lp+"-"+mp+"+"+rp in self.tied:
-            return self.tied[lp+"-"+mp+"+"+rp]
+        orig = lp+"-"+mp+"+"+rp
+        mapped = lp+"-"+mp+"+"+rp
+
+        if lp==self.start:
+            mapped = self.sil
+            orig   = self.sil
+        elif lp+"-"+mp+"+"+rp in self.tied:
+            mapped = self.tied[lp+"-"+mp+"+"+rp]
         elif lp+"-"+mp in self.tied:
-            return self.tied[lp+"-"+mp]
+            mapped = self.tied[lp+"-"+mp]
         elif mp+"+"+rp in self.tied:
-            return self.tied[mp+"+"+rp]
+            mapped = self.tied[mp+"+"+rp]
         elif lp+"+"+mp in self.tied:
-            return self.tied[lp+"+"+mp]
+            mapped = self.tied[lp+"+"+mp]
         elif mp+"-"+rp in self.tied:
-            return self.tied[mp+"-"+rp]
+            mapped = self.tied[mp+"-"+rp]
         elif mp in self.tied:
-            return self.tied[mp]
+            mapped = self.tied[mp]
         elif lp in self.tied:
-            return self.tied[lp]
+            mapped = self.tied[lp]
         elif rp in self.tied:
-            return self.tied[rp]
+            mapped = self.tied[rp]
         else:
-            return self.eps
+            mapped = self.eps
+
+        if self.auxout==True:
+            self.mapper_ofp.write("0 0 MAPPED ORIG\n".replace("MAPPED",mapped).replace("ORIG",orig))
+            return orig
+        else:
+            return mapped
 
     def _make_arc( self, lp, mp, rp ):
         """
@@ -101,17 +118,16 @@ class ContextDependency( ):
         osym  = rp
         self.osyms.add(osym)
 
-        if lp==self.start: isym  = self.sil
         self.isyms.add(isym)
         if lp==self.start: issym = self.start
 
-        print issym, ossym, isym, osym
+        self.cd_ofp.write("%s %s %s %s\n" % (issym, ossym, isym, osym))
         return
 
     def _make_final( self, lp, rp ):
         """Make a final state."""
         fssym = lp+','+rp
-        print fssym
+        self.cd_ofp.write("%s\n" % (fssym))
         return
 
     def _make_aux( self, lp, rp ):
@@ -119,7 +135,11 @@ class ContextDependency( ):
         issym = lp+','+rp
 
         for a in self.aux:
-            print issym, issym, self.eps, a
+            if self.auxout==True:
+                self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
+                self.mapper_ofp.write("0 0 EPS AUX\n".replace("EPS",self.eps).replace("AUX",a))
+            else:
+                self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, self.eps, a))
         return
 
     def generate_deterministic( self ):
@@ -148,6 +168,11 @@ class ContextDependency( ):
                     self._make_arc( lp, mp, rp )
         for a in self.aux:
             self.osyms.add(a)
+            self.isyms.add(a)
+        if self.auxout==True:
+            self.mapper_ofp.write("0\n")
+            self.mapper_ofp.close()
+        self.cd_ofp.close()
         return
 
     def print_isyms( self ):

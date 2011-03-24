@@ -21,12 +21,10 @@ tiedlist=${5}
 #  Other problems may occur depending on the value of LC_ALL
 #   which defines the sort order on your linux machine.
 echo "Generating the word symbols list..."
-./check-vocab.py ${dict} ${arpa} ${prefix}
-
-cat ${prefix}.word.syms | perl -e'while(<>){ next if ${.}==1; chomp; @_= split(/\s+/); print $_[0]."\n";}' > ${prefix}.wordlist
+./checkVocab.py ${dict} ${arpa} ${prefix}
 
 echo "Generating T WFST..."
-./silclass2fst.py ${prefix}.wordlist ${prefix} > ${prefix}.t.fst.txt
+./silclass2fst.py ${prefix}.word.syms ${prefix}
 echo "Compiling T WFST..."
 fstcompile --arc_type=log --isymbols=${prefix}.word.syms --osymbols=${prefix}.word.syms ${prefix}.t.fst.txt > ${prefix}.t.fst
 
@@ -36,12 +34,12 @@ echo "Compiling G WFST..."
 fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | fstarcsort --sort_type=ilabel - > ${prefix}.g.fst
 
 echo "Generating L WFST..."
-./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
+./lexicon2fst.py ${dict} ${prefix} htk
 echo "Compiling L WFST..."
 fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt | fstclosure - |  fstarcsort --sort_type=olabel - > ${prefix}.l.fst
 
 echo "Generating C WFST..."
-./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
+./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix}
 
 echo "Compiling C WFST..."
 #Juicer is VERY picky about symbol ordering. 
