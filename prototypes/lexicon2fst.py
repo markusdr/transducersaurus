@@ -6,10 +6,11 @@ class Lexicon( ):
 
     """Build a lexicon transducer."""
 
-    def __init__( self, dictfile, prefix="lexicon", lextype="htk" ):
+    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL" ):
         """Initialize some basic variables."""
         self.dictfile   = dictfile
         self.prons   = defaultdict(int)
+        self.sil     = sil
         self.eps     = "<eps>"
         self.aux     = set([])
         self.phones  = set([])
@@ -26,6 +27,13 @@ class Lexicon( ):
         as used in most Sphinx AMs.
         """
         pos_pron = []
+        #if len(pron)==1:
+            #if pron[0]==self.sil:
+            #    pos_pron.append(self.sil)
+            #    return pos_pron
+            #else:
+            #pos_pron.append("%s_s"%pron[0])
+            #return pos_pron
         if len(pron)==1:
             pos_pron.append("%s_s"%pron[0])
             return pos_pron
@@ -47,6 +55,7 @@ class Lexicon( ):
            -----------------
         """
         dict_fp = open(self.dictfile)
+        lexicon_ofp = open("PREFIX.l.fst.txt".replace("PREFIX",self.prefix),"w")
         for entry in dict_fp.readlines():
             entry = entry.strip()
             phones = re.split(r"\s+",entry)
@@ -56,20 +65,20 @@ class Lexicon( ):
             # do it himself the alternatives will be discarded
             # during the L*G composition phase.
             word   = re.sub(r"\([0-9]+\)","",word) 
-            if self.lextype=="sphinx": 
+            if self.lextype=="sphinx":
                 phones = self._positionalize( phones )
             pron   = " ".join(phones)
             
             self.prons[pron] += 1
             
-            print self.start, self.last_s, phones[0], word 
+            lexicon_ofp.write("%d %d %s %s\n" % (self.start, self.last_s, phones[0], word))
             self.isyms.add(phones[0])
             self.phones.add(phones[0])
             phones.pop(0)
 
             self.osyms.add(word)
             for p in phones:
-                print self.last_s, self.last_s+1, p, self.eps
+                lexicon_ofp.write("%d %d %s %s\n" % (self.last_s, self.last_s+1, p, self.eps))
                 self.isyms.add(p)
                 self.phones.add(p)
                 self.last_s += 1
@@ -77,11 +86,32 @@ class Lexicon( ):
             aux_sym = "#10%d"%self.prons[pron]
             self.isyms.add(aux_sym)
             self.aux.add(aux_sym)
-            print self.last_s, self.last_s+1, aux_sym, self.eps
+            lexicon_ofp.write("%d %d %s %s\n" % (self.last_s, self.last_s+1, aux_sym, self.eps))
             self.last_s += 1
-            print self.last_s
+            lexicon_ofp.write("%d\n" % (self.last_s))
             self.last_s += 1
         dict_fp.close()
+        lexicon_ofp.close()
+
+        if self.lextype=="sphinx":
+            self._add_logical_ci_phones( )
+
+        return
+
+    def _add_logical_ci_phones( self ):
+        """
+           Add logical context-independent phones.
+           We need to do this here because the cascade tools uses the 
+           lexicon input symbols to compile the C transducer.
+        """
+        ciphones = set([])
+        for p in self.phones:
+            p = re.sub(r"_[bies]","",p)
+            ciphones.add(p)
+        for p in ciphones:
+            self.isyms.add(p)
+            for pos in ["b","i","e","s"]:
+                self.isyms.add("%s_%s"%(p,pos))
         return
 
     def print_isyms( self ):
@@ -124,7 +154,7 @@ class Lexicon( ):
 
 if __name__=="__main__":
     import sys
-    L = Lexicon( sys.argv[1], prefix=sys.argv[2], lextype="htk" )
+    L = Lexicon( sys.argv[1], prefix=sys.argv[2], lextype=sys.argv[3] )
     L.generate_lexicon_transducer()
     L.print_all_syms()
     L.print_aux()

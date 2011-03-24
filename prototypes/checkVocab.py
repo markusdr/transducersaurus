@@ -1,6 +1,26 @@
 #!/usr/bin/python
 import re
 
+def make_hmmsyms( hmmdefs, eps, prefix, aux ):
+    hmm_fp = open(hmmdefs,"r")
+    hmm_ofp = open("PREFIX.hmm.syms".replace("PREFIX",prefix),"w")
+    hmm_ofp.write("EPS 0\n".replace("EPS",eps))
+    cnt = 0
+    for line in hmm_fp:
+        if not line.startswith("~h"):
+            continue
+        cnt +=1
+        line = line.strip()
+        line = re.sub(r"^~h \"","",line)
+        line = re.sub(r"\"$", "", line)
+        hmm_ofp.write("%s %d\n"%(line, cnt))
+    hmm_fp.close()
+    for a in aux:
+        cnt += 1
+        hmm_ofp.write("%s %d\n" % (a, cnt))
+    hmm_ofp.close()
+    return
+
 def check_arpa_vocab( arpalm, lexicon, vocabfile, lastid ):
     """
        Read read the unigram entries from an ARPA

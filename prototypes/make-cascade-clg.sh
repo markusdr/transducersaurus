@@ -18,23 +18,22 @@ tiedlist=${5}
 #    pronunciation dictionary.
 #  **Any symbols that are NOT in the reference dictionary MUST come at the
 #    END of the list - see <UNK> in the script below.
-#  It's crazy but it's the only way it works.
 #  Other problems may occur depending on the value of LC_ALL
 #   which defines the sort order on your linux machine.
 echo "Generating the word symbols list..."
-./check-vocab.py ${dict} ${arpa} ${prefix}
+./checkVocab.py ${dict} ${arpa} ${prefix}
 echo "Generating G WFST..."
 ./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
 echo "Compiling G WFST..."
 fstcompile --arc_type=log --acceptor=true --ssymbols=${prefix}.g.ssyms --isymbols=${prefix}.word.syms ${prefix}.g.fst.txt | fstarcsort --sort_type=ilabel - > ${prefix}.g.fst
 
 echo "Generating L WFST..."
-./lexicon2fst.py ${dict} ${prefix} > ${prefix}.l.fst.txt
+./lexicon2fst.py ${dict} ${prefix} htk
 echo "Compiling L WFST..."
 fstcompile --arc_type=log --isymbols=${prefix}.l.isyms --osymbols=${prefix}.word.syms ${prefix}.l.fst.txt | fstclosure - |  fstarcsort --sort_type=olabel - > ${prefix}.l.fst
 
 echo "Generating C WFST..."
-./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix} > ${prefix}.c.fst.txt
+./cd2fst.py ${prefix}.phons ${prefix}.aux ${tiedlist} ${prefix}
 
 echo "Compiling C WFST..."
 #Juicer is VERY picky about symbol ordering. 
