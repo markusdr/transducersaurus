@@ -150,8 +150,25 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
            Run static on-the-fly composition
            on two input WFSTs.
         """
-        print "fstcomposeotf %s %s > lr" % (l,r)
-        return 
+        print "Converting left-hand composition operand..."
+        command = "fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=FST1FST2.rlbl.txt PREFIX.FST1.fst > PREFIX.FST1.lkhd.fst"
+        command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
+        print command
+        os.system( command )
+
+        print "Relabeling right-hand composition operand..."
+        command = "fstrelabel --relabel_ipairs=FST1FST2.rlbl.txt PREFIX.FST2.fst | fstarcsort - > PREFIX.FST2.rlbl.fst"
+        command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
+        print command
+        os.system( command )
+        
+        print "Performing OTF composition..."
+        command = "fstcompose PREFIX.FST1.lkhd.fst PREFIX.FST2.rlbl.fst > PREFIX.FST1FST2.lkhd.fst"
+        command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
+        print command
+        os.system( command )
+        self.final_fst = "FST1FST2.lkhd".replace("FST1",l.lower()).replace("FST2",r.lower())
+        return self.final_fst
 
     def _determinize( self, l ):
         """
