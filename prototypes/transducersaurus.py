@@ -242,7 +242,6 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             print "Compiling C..."
             command = "fstcompile --arc_type=SEMIRING --ssymbols=PREFIX.c.ssyms --isymbols=PREFIX.c.isyms --osymbols=PREFIX.l.isyms PREFIX.c.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.c.fst"
             command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix) 
-            print command
             os.system( command )
         return
 

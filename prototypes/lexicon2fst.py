@@ -29,12 +29,8 @@ class Lexicon( ):
         """
         pos_pron = []
         if len(pron)==1:
-            if pron[0]==self.sil:
-                pos_pron.append(self.sil)
-                return pos_pron
-            else:
-                pos_pron.append("%s_s"%pron[0])
-                return pos_pron
+            pos_pron.append("%s_s"%pron[0])
+            return pos_pron
         pos_pron.append("%s_b"%pron[0])
         if len(pron)==2:
             pos_pron.append("%s_e"%pron[1])
