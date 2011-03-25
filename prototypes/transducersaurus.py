@@ -38,9 +38,12 @@ class GenerateCascade( ):
         self.am_isyms     = None
         
     def _set_prefix( self, prefix ):
-        if not self.basedir=="" and not os.path.exists(self.basedir):
-            print "Creating dir: %s" % self.basedir
-            os.makedirs(self.basedir)
+        if self.basedir=="auto":
+            self.basedir = prefix+"-"+self.buildcommand.replace("(","a").replace(")","b").replace("*","c").replace(".","o")
+        if self.basedir:
+            if not os.path.exists(self.basedir):
+                print "Creating dir: %s" % self.basedir
+                os.makedirs(self.basedir)
         prefix = os.path.join(self.basedir,prefix)
         return prefix 
 
@@ -160,13 +163,13 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
            on two input WFSTs.
         """
         print "Converting left-hand composition operand..."
-        command = "fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=FST1FST2.rlbl.txt PREFIX.FST1.fst > PREFIX.FST1.lkhd.fst"
+        command = "fstconvert --fst_type=olabel_lookahead --save_relabel_opairs=PREFIX.FST1FST2.rlbl.txt PREFIX.FST1.fst > PREFIX.FST1.lkhd.fst"
         command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
         print command
         os.system( command )
 
         print "Relabeling right-hand composition operand..."
-        command = "fstrelabel --relabel_ipairs=FST1FST2.rlbl.txt PREFIX.FST2.fst | fstarcsort - > PREFIX.FST2.rlbl.fst"
+        command = "fstrelabel --relabel_ipairs=PREFIX.FST1FST2.rlbl.txt PREFIX.FST2.fst | fstarcsort - > PREFIX.FST2.rlbl.fst"
         command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
         print command
         os.system( command )
