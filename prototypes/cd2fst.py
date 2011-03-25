@@ -22,6 +22,7 @@ class ContextDependency( ):
         self.isyms    = set([])
         self.tied     = {}
         self.osyms    = set([])
+        self._mapper_arcs = set([])
         self.tiedlist = tiedlist
         self.ssyms.add(self.start)
         self._load_list( self.phons_f, "phons" )
@@ -32,6 +33,13 @@ class ContextDependency( ):
     def _init_mapper( self ):
         if self.auxout==True:
             self.mapper_ofp = open("PREFIX.d.fst.txt".replace("PREFIX",self.prefix),"w")
+        return
+        
+    def _write_mapper_arc( self, mapped, orig ):
+        arc = "0 0 MAPPED ORIG\n".replace("MAPPED",mapped).replace("ORIG",orig)
+        if not arc in self._mapper_arcs:
+            self.mapper_ofp.write(arc)
+            self._mapper_arcs.add(arc)
         return
 
     def _load_list( self, filename, ltype ):
@@ -96,7 +104,7 @@ class ContextDependency( ):
             mapped = self.eps
 
         if self.auxout==True:
-            self.mapper_ofp.write("0 0 MAPPED ORIG\n".replace("MAPPED",mapped).replace("ORIG",orig))
+            self._write_mapper_arc( mapped, orig )
             return orig
         else:
             return mapped
@@ -137,7 +145,7 @@ class ContextDependency( ):
         for a in self.aux:
             if self.auxout==True:
                 self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
-                self.mapper_ofp.write("0 0 EPS AUX\n".replace("EPS",self.eps).replace("AUX",a))
+                self._write_mapper_arc( self.eps, a )
             else:
                 self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, self.eps, a))
         return

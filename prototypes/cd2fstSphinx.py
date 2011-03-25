@@ -25,9 +25,23 @@ class ContextDependencySphinx( ):
         self.osyms    = set([])
         self.tied     = {}
         self.seen     = set([])
+        self._mapper_arcs = set([])
         self.ssyms.add(self.start)
         self._load_list( self.aux_f, "aux" )
         self._load_mdef( )
+        self._init_mapper( )
+        
+    def _init_mapper( self ):
+        if self.auxout==True:
+            self.mapper_ofp = open("PREFIX.d.fst.txt".replace("PREFIX",self.prefix),"w")
+        return
+        
+    def _write_mapper_arc( self, mapped, orig ):
+        arc = "0 0 MAPPED ORIG\n".replace("MAPPED",mapped).replace("ORIG",orig)
+        if not arc in self._mapper_arcs:
+            self.mapper_ofp.write(arc)
+            self._mapper_arcs.add(arc)
+        return
 
     def _load_list( self, filename, ltype ):
         """Load a list of phonemes or aux symbols.  One per line."""
@@ -67,22 +81,33 @@ class ContextDependencySphinx( ):
         return '0'
         
     def _check_sym( self, lp, mp, rp ):
-        if lp==self.start:
-            return self.eps
+    
         lp = re.sub(r"_[bies]","",lp)
         rp = re.sub(r"_[bies]","",rp)
-        mp,pos = mp.split("_")
-        if (lp,mp,rp,pos) in self.mdef.tiedlist:
-            return lp+"-"+mp+"_"+pos+"+"+rp
-        poslist = set(['b','i','e','s'])
-        poslist.remove(pos)
-        for pos in poslist:
+        orig   = lp+"-"+mp+"+"+rp
+        
+        def cmpsym( lp, mp, rp ):
+            if lp==self.start:
+                return self.eps
+            mp,pos = mp.split("_")
+            poslist = set(['b','i','e','s'])
+            poslist.remove(pos)
             if (lp,mp,rp,pos) in self.mdef.tiedlist:
                 return lp+"-"+mp+"_"+pos+"+"+rp
-        if ('-',mp,'-','-') in self.mdef.tiedlist:
-            return mp
+            for pos in poslist:
+                if (lp,mp,rp,pos) in self.mdef.tiedlist:
+                    return lp+"-"+mp+"_"+pos+"+"+rp
+            if ('-',mp,'-','-') in self.mdef.tiedlist:
+                return mp
+            else:
+                return self.eps
 
-        return
+        mapped = cmpsym( lp, mp, rp )
+        if self.auxout==True:
+            self._write_mapper_arc( mapped, orig )
+            return orig
+            
+        return mapped
 
     def _make_condensed_arc( self, lp, mp, rp, pos=None ):
         """
@@ -153,7 +178,11 @@ class ContextDependencySphinx( ):
         issym = lp+','+rp
 
         for a in self.aux:
-            self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
+            if self.auxout==True:
+                self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
+                self._write_mapper_arc( self.eps, a )
+            else:
+                self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, self.eps, a))
         return
 
     def generate_nondeterministic_condensed( self ):
@@ -182,7 +211,7 @@ class ContextDependencySphinx( ):
         for a in self.aux:
             self.osyms.add(a)
             self.isyms.add(a)
-        self.ssyms.add("OW,O")
+
         return
         
     def generate_deterministic( self ):
@@ -218,8 +247,8 @@ class ContextDependencySphinx( ):
         self.cd_ofp.close()
         return
 
-    def print_isyms( self ):
-        isym_f   = "%s.c.isyms" % self.prefix
+    def print_hmmsyms( self ):
+        isym_f   = "%s.hmm.syms" % self.prefix
         isyms_fp = open( isym_f,"w" )
         isyms_fp.write("%s %d\n" % (self.eps,0))
         cnt = 0
@@ -232,6 +261,15 @@ class ContextDependencySphinx( ):
         for a in self.aux:
             isyms_fp.write("%s %d\n" %(a, cnt))
             cnt += 1
+        isyms_fp.close()
+        return
+        
+    def print_isyms( self ):
+        isym_f   = "%s.c.isyms" % self.prefix
+        isyms_fp = open( isym_f,"w" )
+        isyms_fp.write("%s %d\n" % (self.eps,0))
+        for i,sym in enumerate(self.isyms):
+            isyms_fp.write("%s %d\n" % (sym, i+1))
         isyms_fp.close()
         return
 
@@ -257,6 +295,7 @@ class ContextDependencySphinx( ):
         self.print_ssyms()
         self.print_isyms()
         self.print_osyms()
+        self.print_hmmsyms()
         return
 
 if __name__=="__main__":

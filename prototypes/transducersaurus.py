@@ -123,12 +123,13 @@ class GenerateCascade( ):
            relevant to models based on HTK acoustic models.
         """
                    
-        command="""sort -u PREFIX.d.fst.txt | 
-fstcompile --arc_type=SEMIRING --isymbols=PREFIX.hmm.syms --osymbols=PREFIX.c.isyms - | 
+        command="""
+fstcompile --arc_type=SEMIRING --isymbols=PREFIX.hmm.syms --osymbols=PREFIX.c.isyms PREFIX.d.fst.txt | 
 fstarcsort --sort_type=olabel - | 
 fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         command=command.replace("\n"," ").replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("FST",self.final_fst)
         os.system( command )
+        self.final_fst = "PREFIX.dFST.fst".replace("PREFIX",self.prefix).replace("FST",self.final_fst)
         return
 		
     def _compose( self, l, r ):
