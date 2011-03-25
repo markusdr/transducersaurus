@@ -234,7 +234,7 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             silclass.generate_silclass( )
             silclass.print_all_syms( )
             print "Compiling T..."
-            command = "fstcompile --isymbols=WORDS --osymbols=WORDS --arc_type=SEMIRING PREFIX.t.fst.txt > PREFIX.t.fst"
+            command = "fstcompile --isymbols=WORDS --osymbols=WORDS --arc_type=SEMIRING PREFIX.t.fst.txt | fstarcsort --sort_type=ilabel - > PREFIX.t.fst"
             command = command.replace("WORDS",self.word_osyms).replace("PREFIX",self.prefix).replace("SEMIRING",self.semiring)
             os.system( command )
         if 'G' in self.wfsts:
