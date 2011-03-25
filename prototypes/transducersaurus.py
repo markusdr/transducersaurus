@@ -284,19 +284,19 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             for use inside of TCubed or Juicer.
         """
         if self.convert.lower()=="t":
-            print "Converting final cascade PREFIXFINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
-            command = "fstprint PREFIXFINAL.fst | fsmcompile -t - > PREFIXFINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            print "Converting final cascade PREFIX.FINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIX.FINAL.fst | fsmcompile -t > PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
         elif self.convert.lower()=="j": 
-            print "Converting final cascade PREFIXFINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
-            command = "fstprint PREFIXFINAL.fst > PREFIXFINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            print "Converting final cascade PREFIX.FINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIX.FINAL.fst > PREFIX.FINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
         elif self.convert.lower()=="tj" or self.tj.lower()=="jt":
-            print "Converting final cascade PREFIXFINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
-            command = "fstprint PREFIXFINAL.fst | fsmcompile -t - > PREFIXFINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            print "Converting final cascade PREFIX.FINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIX.FINAL.fst | fsmcompile -t > PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
-            print "Converting final cascade PREFIXFINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
-            command = "fstprint PREFIXFINAL.fst > PREFIXFINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            print "Converting final cascade PREFIX.FINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIX.FINAL.fst > PREFIX.FINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
         else:
             print "Conversion command: %s is not a valid command.  Aborting." % self.tj
