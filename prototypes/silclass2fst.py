@@ -28,7 +28,7 @@ class Silclass( ):
         return
 
     def log2tropical( self, val ):
-        tropval = math.log(float(val))*-1.
+        tropval = math.log(10.0) * math.log(float(val)) * -1.0
         return tropval 
 
     def generate_silclass( self ):

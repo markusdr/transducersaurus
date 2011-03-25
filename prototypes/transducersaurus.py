@@ -52,8 +52,8 @@ class GenerateCascade( ):
 
     def _opGTE( self, top, op ):
         """
-        Determine operator precedence for the WFST operations 
-        allowed in self._grammar.
+           Determine operator precedence for the WFST operations 
+           allowed in self._grammar.
         """
         prec = { 'det':10, 'min':10, '*':5, '.':5 }
         if prec[op]<=prec[top]:
@@ -63,8 +63,8 @@ class GenerateCascade( ):
 
     def _toPostfix( self, program ):
         """
-		   Tokenize and convert an infix expression to postfix notation
-		   based on the regex grammar specified in self._grammar
+	   Tokenize and convert an infix expression to postfix notation
+	   based on the regex grammar specified in self._grammar
         """
         tokens = []
         stack  = []
@@ -286,26 +286,30 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             Convert the final cascade to AT&T format or txt format
             for use inside of TCubed or Juicer.
         """
-        print self.final_fst
-        print self.prefix
-        print ""
+        
         if self.convert.lower()=="t":
             print "Converting final cascade PREFIX.FINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             command = "fstprint PREFIX.FINAL.fst | fsmcompile -t > PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
+            print "PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
         elif self.convert.lower()=="j": 
             print "Converting final cascade PREFIX.FINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             command = "fstprint PREFIX.FINAL.fst > PREFIX.FINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
+            print "PREFIX.FINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
         elif self.convert.lower()=="tj" or self.tj.lower()=="jt":
             print "Converting final cascade PREFIX.FINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             command = "fstprint PREFIX.FINAL.fst | fsmcompile -t > PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
+            print "PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             print "Converting final cascade PREFIX.FINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             command = "fstprint PREFIX.FINAL.fst > PREFIX.FINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             os.system( command )
+            print "PREFIX.FINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
         else:
             print "Conversion command: %s is not a valid command.  Aborting." % self.tj
+            return
+        print "PREFIX.word.syms".replace("PREFIX",self.prefix)
         return
             
 def print_args( args ):
