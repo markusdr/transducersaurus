@@ -17,7 +17,9 @@ class GenerateCascade( ):
 	   optimization routine parser.
     """
     
-    def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", basedir="", amtype="htk", semiring="log", failure=False, auxout=False, eps="<eps>", sil="sil" ):
+    def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", 
+            basedir="", amtype="htk", semiring="log", failure=False, auxout=False, 
+            eps="<eps>", sil="sil", convert=None ):
         self._grammar     = re.compile(r"\s*(?:(det|min|\*|\.)|([CLGT])|([\)\(]))")
         self.tiedlist     = tiedlist
         self.lexicon      = lexicon
@@ -34,6 +36,7 @@ class GenerateCascade( ):
         self.auxout       = auxout
         self.wfsts        = set([])
         self.postfix      = self._toPostfix(buildcommand)
+        self.convert      = convert
         self.word_osyms	  = None
         self.am_isyms     = None
         
@@ -118,7 +121,8 @@ class GenerateCascade( ):
 				
         if self.auxout==True:
             self._mapper( )
-
+        if self.convert:
+            self.convertTcubedJuicer( )
         return
 		
     def _mapper( self ):
@@ -274,6 +278,30 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             os.system( command )
         return
 
+    def convertTcubedJuicer( self ):
+        """
+            Convert the final cascade to AT&T format or txt format
+            for use inside of TCubed or Juicer.
+        """
+        if self.convert.lower()=="t":
+            print "Converting final cascade PREFIXFINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIXFINAL.fst | fsmcompile -t - > PREFIXFINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            os.system( command )
+        elif self.convert.lower()=="j": 
+            print "Converting final cascade PREFIXFINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIXFINAL.fst > PREFIXFINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            os.system( command )
+        elif self.convert.lower()=="tj" or self.tj.lower()=="jt":
+            print "Converting final cascade PREFIXFINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIXFINAL.fst | fsmcompile -t - > PREFIXFINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            os.system( command )
+            print "Converting final cascade PREFIXFINAL to text format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            command = "fstprint PREFIXFINAL.fst > PREFIXFINAL.fst.txt".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
+            os.system( command )
+        else:
+            print "Conversion command: %s is not a valid command.  Aborting." % self.tj
+        return
+            
 def print_args( args ):
     print "Running with the following arguments:"
     print "tiedlist   =", args.tiedlist
@@ -289,7 +317,9 @@ def print_args( args ):
     print "failure    =", args.failure
     print "auxout     =", args.auxout
     print "basedir    =", args.basedir
+    print "convert    =", args.convert
     return 
+    
 
 if __name__=="__main__":
     import sys, operator, re, argparse
@@ -299,6 +329,7 @@ if __name__=="__main__":
     parser.add_argument('--auxout',   "-o", help='Generate explicit input aux labels for the context-dependency transducer.  Set to true if you plan to optimize the final cascade.', default=False, action="store_true")
     parser.add_argument('--basedir',  "-b", help='Base directory for model storage.', default="", required=False)
     parser.add_argument('--command',  "-c", help='Build command specifying OpenFST composition and optimization operations.\nValid operators are\n\t"*" - composition,\n\t"." - static on-the-fly composition,\n\t"det" - determinization,\n\t"min" - minimization', required=True)
+    parser.add_argument('--convert',  "-n", help='Convert the final cascade to either Juicer or TCubed format.  Valid values are "t" (tcubed), "j" (juicer) or "tj" for both.', default=None, required=False )
     parser.add_argument('--eps',      "-e", help='Epsilon symbol.', default="<eps>")
     parser.add_argument('--failure',  "-f", help='Use failure transitions to represent back-off arcs in the LM.', default=False, action="store_true")
     parser.add_argument('--grammar',  "-g", help='An ARPA format language model.', required=True)
@@ -334,7 +365,8 @@ if __name__=="__main__":
         sil=args.sil,
         auxout=args.auxout,
         failure=args.failure,
-        basedir=args.basedir
+        basedir=args.basedir,
+        convert=args.convert
     )
     if args.no_compile==False:
         cascade.compileFSTs( )
