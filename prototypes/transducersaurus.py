@@ -290,23 +290,23 @@ def print_args( args ):
 
 if __name__=="__main__":
     import sys, operator, re, argparse
-   
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--tiedlist', "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
-    parser.add_argument('--lexicon',  "-l", help='List of words to transcribe.', required=True)
-    parser.add_argument('--grammar',  "-g", help='An ARPA format language model.', required=True)
-    parser.add_argument('--command',  "-c", help='Build command specifying OpenFST composition and optimization operations.\nValid operators are\n\t"*" - composition,\n\t"." - static on-the-fly composition,\n\t"det" - determinization,\n\t"min" - minimization', required=True)
-    parser.add_argument('--hmmdefs',  "-d", help='hmmdefs file.  Needed for HTK acoustic models.', default=None, required=False )
-    parser.add_argument('--prefix',   "-p", help='A file prefix.  Will be prepended to all model files created during cascade generation.', default="test")
+    example = """./transducersaurus.py --tiedlist tiedlist --hmmdefs hmmdefs --lexicon lexicon.dic --grammar lm3g.arpa --prefix test --command "(C*det(L*G)" """
+    parser = argparse.ArgumentParser(description=example)
     parser.add_argument('--amtype',   "-a", help='Acoustic model type.  May be set to "htk" or "sphinx".', default="htk" )
-    parser.add_argument('--semiring', "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log")
-    parser.add_argument('--eps',      "-e", help='Epsilon symbol.', default="<eps>")
-    parser.add_argument('--sil',      "-s", help='Silence monophone symbol.', default="sil")
-    parser.add_argument('--failure',  "-f", help='Use failure transitions to represent back-off arcs in the LM.', default=False, action="store_true")
     parser.add_argument('--auxout',   "-o", help='Generate explicit input aux labels for the context-dependency transducer.  Set to true if you plan to optimize the final cascade.', default=False, action="store_true")
-    parser.add_argument('--no_compile',  "-z", help='Specify whether or not to run the component compilation routines.  Set to false if you have already built your components and just want to combine and optimize them.', default=False, action="store_true")
-    parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true")
     parser.add_argument('--basedir',  "-b", help='Base directory for model storage.', default="", required=False)
+    parser.add_argument('--command',  "-c", help='Build command specifying OpenFST composition and optimization operations.\nValid operators are\n\t"*" - composition,\n\t"." - static on-the-fly composition,\n\t"det" - determinization,\n\t"min" - minimization', required=True)
+    parser.add_argument('--eps',      "-e", help='Epsilon symbol.', default="<eps>")
+    parser.add_argument('--failure',  "-f", help='Use failure transitions to represent back-off arcs in the LM.', default=False, action="store_true")
+    parser.add_argument('--grammar',  "-g", help='An ARPA format language model.', required=True)
+    parser.add_argument('--hmmdefs',  "-d", help='hmmdefs file.  Needed for HTK acoustic models.', default=None, required=False )
+    parser.add_argument('--lexicon',  "-l", help='List of words to transcribe.', required=True)
+    parser.add_argument('--no_compile',  "-z", help='Specify whether or not to run the component compilation routines.  Set to false if you have already built your components and just want to combine and optimize them.', default=False, action="store_true")
+    parser.add_argument('--prefix',   "-p", help='A file prefix.  Will be prepended to all model files created during cascade generation.', default="test")
+    parser.add_argument('--semiring', "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log")
+    parser.add_argument('--sil',      "-s", help='Silence monophone symbol.', default="sil")
+    parser.add_argument('--tiedlist', "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
+    parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 
     if args.amtype=="htk" and args.hmmdefs==None:
