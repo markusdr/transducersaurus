@@ -144,7 +144,7 @@ fstarcsort --sort_type=olabel - |
 fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         command=command.replace("\n"," ").replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("FST",self.final_fst)
         os.system( command )
-        self.final_fst = "PREFIX.dFST.fst".replace("PREFIX",self.prefix).replace("FST",self.final_fst)
+        self.final_fst = "dFST".replace("FST",self.final_fst)
         return
 		
     def _compose( self, l, r ):
@@ -273,7 +273,10 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
                 C.generate_deterministic()
                 C.print_all_syms()
             print "Compiling C..."
-            command = "fstcompile --arc_type=SEMIRING --ssymbols=PREFIX.c.ssyms --isymbols=PREFIX.c.isyms --osymbols=PREFIX.l.isyms PREFIX.c.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.c.fst"
+            if self.auxout:
+                command = "fstcompile --arc_type=SEMIRING --ssymbols=PREFIX.c.ssyms --isymbols=PREFIX.c.isyms --osymbols=PREFIX.l.isyms PREFIX.c.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.c.fst"
+            else:
+                command = "fstcompile --arc_type=SEMIRING --ssymbols=PREFIX.c.ssyms --isymbols=PREFIX.hmm.syms --osymbols=PREFIX.l.isyms PREFIX.c.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.c.fst"
             command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix) 
             os.system( command )
         return
@@ -283,6 +286,9 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             Convert the final cascade to AT&T format or txt format
             for use inside of TCubed or Juicer.
         """
+        print self.final_fst
+        print self.prefix
+        print ""
         if self.convert.lower()=="t":
             print "Converting final cascade PREFIX.FINAL to AT&T format...".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
             command = "fstprint PREFIX.FINAL.fst | fsmcompile -t > PREFIX.FINAL.fsm".replace("FINAL",self.final_fst).replace("PREFIX",self.prefix)
