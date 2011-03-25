@@ -17,14 +17,15 @@ class GenerateCascade( ):
 	   optimization routine parser.
     """
     
-    def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", amtype="htk", semiring="log", failure=False, auxout=False, eps="<eps>", sil="sil" ):
+    def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", basedir="", amtype="htk", semiring="log", failure=False, auxout=False, eps="<eps>", sil="sil" ):
         self._grammar     = re.compile(r"\s*(?:(det|min|\*|\.)|([CLGT])|([\)\(]))")
         self.tiedlist     = tiedlist
         self.lexicon      = lexicon
         self.arpa         = arpa
         self.buildcommand = buildcommand
         self.hmmdefs      = hmmdefs
-        self.prefix       = prefix
+        self.basedir      = basedir
+        self.prefix       = self._set_prefix(prefix)
         self.amtype       = amtype
         self.semiring     = semiring
         self.failure      = failure
@@ -35,6 +36,13 @@ class GenerateCascade( ):
         self.postfix      = self._toPostfix(buildcommand)
         self.word_osyms	  = None
         self.am_isyms     = None
+        
+    def _set_prefix( self, prefix ):
+        if not self.basedir=="" and not os.path.exists(self.basedir):
+            print "Creating dir: %s" % self.basedir
+            os.makedirs(self.basedir)
+        prefix = os.path.join(self.basedir,prefix)
+        return prefix 
 
     def _opGTE( self, top, op ):
         """
@@ -277,6 +285,7 @@ def print_args( args ):
     print "sil        =", args.sil
     print "failure    =", args.failure
     print "auxout     =", args.auxout
+    print "basedir    =", args.basedir
     return 
 
 if __name__=="__main__":
@@ -297,6 +306,7 @@ if __name__=="__main__":
     parser.add_argument('--auxout',   "-o", help='Generate explicit input aux labels for the context-dependency transducer.  Set to true if you plan to optimize the final cascade.', default=False, action="store_true")
     parser.add_argument('--no_compile',  "-z", help='Specify whether or not to run the component compilation routines.  Set to false if you have already built your components and just want to combine and optimize them.', default=False, action="store_true")
     parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true")
+    parser.add_argument('--basedir',  "-b", help='Base directory for model storage.', default="", required=False)
     args = parser.parse_args()
 
     if args.amtype=="htk" and args.hmmdefs==None:
@@ -320,7 +330,8 @@ if __name__=="__main__":
         eps=args.eps,
         sil=args.sil,
         auxout=args.auxout,
-        failure=args.failure
+        failure=args.failure,
+        basedir=args.basedir
     )
     if args.no_compile==False:
         cascade.compileFSTs( )
