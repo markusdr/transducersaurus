@@ -361,7 +361,8 @@ if __name__=="__main__":
         print "HTK format AMs require an hmmdefs file.  Please specify one."
         sys.exit()
     if '.' in args.command and args.semiring=="log":
-        print "WARNING: Your build command includes at least one call to OTF compose, but you have specified the log semiring.  It might not work out well..."
+        print """WARNING: Your build command includes at least one call to OTF compose, but you have specified the log semiring.  
+       Determinization of the lexicon transducer will be performed in the tropical semiring."""
     if args.verbose:
         print_args( args )
 	
