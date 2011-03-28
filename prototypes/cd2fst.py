@@ -165,7 +165,7 @@ class ContextDependency( ):
         for lp in self.phons:
             #Initial arcs
             self._make_arc( self.start, self.eps, lp )
-            #self._make_aux( self.eps, lp )
+            self._make_aux( self.eps, lp )
             #Monophone arcs
             self._make_arc( self.eps, lp, self.eps )
             self._make_final( lp, self.eps )
