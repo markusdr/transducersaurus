@@ -82,6 +82,9 @@ class ContextDependency( ):
         mapped = lp+"-"+mp+"+"+rp
 
         if lp==self.start:
+            mapped = self.eps
+            orig   = self.eps
+        elif mp==self.sil:
             mapped = self.sil
             orig   = self.sil
         elif lp+"-"+mp+"+"+rp in self.tied:
@@ -136,6 +139,7 @@ class ContextDependency( ):
         """Make a final state."""
         fssym = lp+','+rp
         self.cd_ofp.write("%s\n" % (fssym))
+        self._make_aux( lp, rp )
         return
 
     def _make_aux( self, lp, rp ):
@@ -160,16 +164,16 @@ class ContextDependency( ):
 
         for lp in self.phons:
             #Initial arcs
-            self._make_arc( self.start, self.sil, lp )
-            self._make_aux( self.sil, lp )
+            self._make_arc( self.start, self.eps, lp )
+            #self._make_aux( self.eps, lp )
             #Monophone arcs
-            self._make_arc( self.sil, lp, self.sil )
-            self._make_final( lp, self.sil )
+            self._make_arc( self.eps, lp, self.eps )
+            self._make_final( lp, self.eps )
             for mp in self.phons:
                 #Initial to Internal arcs
-                self._make_arc( self.sil, lp, mp )
+                self._make_arc( self.eps, lp, mp )
                 #Internal to Final arcs
-                self._make_arc( lp, mp, self.sil )
+                self._make_arc( lp, mp, self.eps )
                 self._make_aux( lp, mp )
                 for rp in self.phons:
                     #Internal to Internal arcs

@@ -6,19 +6,19 @@ class Lexicon( ):
 
     """Build a lexicon transducer."""
 
-    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL" ):
+    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL", eps="<eps>" ):
         """Initialize some basic variables."""
         self.dictfile   = dictfile
         self.prons   = defaultdict(int)
         self.sil     = sil
-        self.eps     = "<eps>"
+        self.eps     = eps
         self.sil     = sil
         self.aux     = set([])
         self.phones  = set([])
         self.isyms   = set([])
         self.osyms   = set([])
         self.start   = 0
-        self.last_s  = 1
+        self.last_s  = 2
         self.prefix  = prefix
         self.lextype = lextype
     
@@ -65,23 +65,24 @@ class Lexicon( ):
             
             self.prons[pron] += 1
             
-            lexicon_ofp.write("%d %d %s %s\n" % (self.start, self.last_s, phones[0], word))
+            lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.start, self.last_s, phones[0], word))
             self.isyms.add(phones[0])
             self.phones.add(phones[0])
             phones.pop(0)
 
             self.osyms.add(word)
             for p in phones:
-                lexicon_ofp.write("%d %d %s %s\n" % (self.last_s, self.last_s+1, p, self.eps))
+                lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.last_s, self.last_s+1, p, self.eps))
                 self.isyms.add(p)
                 self.phones.add(p)
                 self.last_s += 1
                 
-            aux_sym = "#10%d"%self.prons[pron]
-            self.isyms.add(aux_sym)
-            self.aux.add(aux_sym)
-            lexicon_ofp.write("%d %d %s %s\n" % (self.last_s, self.last_s+1, aux_sym, self.eps))
-            self.last_s += 1
+            if self.prons[pron]>1 and not pron==self.sil:
+                aux_sym = "#1000%d"%(self.prons[pron]-1)
+                self.isyms.add(aux_sym)
+                self.aux.add(aux_sym)
+                lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.last_s, self.last_s+1, aux_sym, self.eps))
+                self.last_s += 1
             lexicon_ofp.write("%d\n" % (self.last_s))
             self.last_s += 1
         dict_fp.close()

@@ -239,7 +239,7 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             os.system( command )
         if 'G' in self.wfsts:
             print "Building G: ARPA LM transducer..."
-            arpa = ArpaLM( self.arpa, "PREFIX.g.fst.txt".replace("PREFIX",self.prefix), prefix=self.prefix)
+            arpa = ArpaLM( self.arpa, "PREFIX.g.fst.txt".replace("PREFIX",self.prefix), prefix=self.prefix, eps=self.eps)
             arpa.arpa2fst( )
             arpa.print_all_syms( )
             print "Compiling G..."
@@ -248,7 +248,7 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             os.system( command )
         if 'L' in self.wfsts:
             print "Building L: lexicon transducer..."
-            L = Lexicon( self.lexicon, prefix=self.prefix, lextype=self.amtype )
+            L = Lexicon( self.lexicon, prefix=self.prefix, lextype=self.amtype, eps=self.eps, sil=self.sil )
             L.generate_lexicon_transducer()
             L.print_all_syms()
             L.print_aux()
