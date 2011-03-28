@@ -190,7 +190,11 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         """
            Run determinization on an input WFST.
         """
-        command = "fstdeterminize PREFIX.FST.fst > PREFIX.detFST.fst" 
+        if l.lower()=="l" and self.semiring=="log":
+            #Determinizing an un-weighted lexicon in the log semiring will cause chaos
+            command = "fstprint PREFIX.FST.fst | fstcompile - | fstdeterminize - | fstprint - | fstcompile --arc_type=log - > PREFIX.detFST.fst" 
+        else:
+            command = "fstdeterminize PREFIX.FST.fst > PREFIX.detFST.fst" 
         command = command.replace("PREFIX",self.prefix).replace("FST",l.lower())
         print command
         os.system( command )
