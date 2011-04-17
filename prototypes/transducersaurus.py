@@ -318,20 +318,8 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             
 def print_args( args ):
     print "Running with the following arguments:"
-    print "tiedlist   =", args.tiedlist
-    print "lexicon    =", args.lexicon
-    print "grammar    =", args.grammar
-    print "command    =", args.command
-    print "hmmdefs    =", args.hmmdefs
-    print "prefix     =", args.prefix
-    print "amtype     =", args.amtype
-    print "semiring   =", args.semiring
-    print "eps        =", args.eps
-    print "sil        =", args.sil
-    print "failure    =", args.failure
-    print "auxout     =", args.auxout
-    print "basedir    =", args.basedir
-    print "convert    =", args.convert
+    for attr, value in args.__dict__.iteritems():
+        print attr, "=", value
     return 
     
 

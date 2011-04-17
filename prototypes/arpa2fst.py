@@ -74,6 +74,7 @@ class ArpaLM( ):
                 if self.order==1:
                     if parts[1]==self.se:
                         arpa_ofp.write( self.make_arc( self.eps, self.se, self.se, self.se, parts[0] ) )
+                        arpa_ofp.write( self.make_arc( self.se, self.eps, self.eps, self.eps, 0.0 ) )
                     elif parts[1]==self.sb:
                         arpa_ofp.write( self.make_arc( self.sb, self.eps, self.eps, self.eps, parts[2] ) )
                     else:

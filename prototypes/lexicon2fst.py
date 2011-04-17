@@ -1,12 +1,12 @@
 #!/usr/bin/python
-import re
+import re, math
 from collections import defaultdict
 
 class Lexicon( ):
 
     """Build a lexicon transducer."""
 
-    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL", eps="<eps>" ):
+    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL", eps="<eps>", weighted=False ):
         """Initialize some basic variables."""
         self.dictfile   = dictfile
         self.prons   = defaultdict(int)
@@ -19,6 +19,7 @@ class Lexicon( ):
         self.osyms   = set([])
         self.start   = 0
         self.last_s  = 2
+        self.weighted = weighted
         self.prefix  = prefix
         self.lextype = lextype
     
@@ -50,7 +51,10 @@ class Lexicon( ):
         """
         dict_fp = open(self.dictfile)
         lexicon_ofp = open("PREFIX.l.fst.txt".replace("PREFIX",self.prefix),"w")
-        for entry in dict_fp.readlines():
+        entries = dict_fp.readlines()
+        #The weighted lexicon is still not actually supported.
+        weight = math.log(10.0) * math.log(1./float(len(entries))) * -1
+        for entry in entries:
             entry = entry.strip()
             phones = re.split(r"\s+",entry)
             word   = phones.pop(0)
@@ -64,7 +68,6 @@ class Lexicon( ):
             pron   = " ".join(phones)
             
             self.prons[pron] += 1
-            
             lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.start, self.last_s, phones[0], word))
             self.isyms.add(phones[0])
             self.phones.add(phones[0])

@@ -8,7 +8,7 @@ class ContextDependencySphinx( ):
     Use an HTK format tiedlist to handle logical->physical triphone mapping.
     """
 
-    def __init__( self, mdef, aux, start="<start>", prefix="cd", eps="<eps>", sil="SIL", auxout=False ):
+    def __init__( self, mdef, aux, start="<start>", prefix="cd", eps="<eps>", sil="SIL", auxout=False, minimal=True ):
         self.sil      = sil
         self.mdef_file = mdef
         self.mdef     = None
@@ -28,7 +28,7 @@ class ContextDependencySphinx( ):
         self._mapper_arcs = set([])
         self.ssyms.add(self.start)
         self._load_list( self.aux_f, "aux" )
-        self._load_mdef( )
+        self._load_mdef( minimal=minimal )
         self._init_mapper( )
         
     def _init_mapper( self ):
@@ -52,12 +52,18 @@ class ContextDependencySphinx( ):
         fp.close()
         return
 
-    def _load_mdef( self ):
+    def _load_mdef( self, minimal ):
         """Load the tiedlist.  Track the ids."""
         self.mdef = T3Mdef( self.mdef_file )
-        for n in xrange(0,self.mdef.n_ci):
-            for pos in ['b','i','e','s']:
-                self.phons.add(self.mdef.allfields[n][0]+"_"+pos)
+        if minimal==True:
+            fp = open("PREFIX.phons".replace("PREFIX",self.prefix), "r")
+            for phon in fp:
+                phon = phon.strip()
+                self.phons.add(phon)
+        else:
+            for n in xrange(0,self.mdef.n_ci):
+                for pos in ['b','i','e','s']:
+                    self.phons.add(self.mdef.allfields[n][0]+"_"+pos)
         return
 
     def _check_sym_condensed( self, lp, mp, rp ):
@@ -85,18 +91,22 @@ class ContextDependencySphinx( ):
         lp = re.sub(r"_[bies]","",lp)
         rp = re.sub(r"_[bies]","",rp)
         orig   = lp+"-"+mp+"+"+rp
-        
+
         def cmpsym( lp, mp, rp ):
             if lp==self.start:
                 return self.eps
             mp,pos = mp.split("_")
-            poslist = set(['b','i','e','s'])
-            poslist.remove(pos)
+            poslist = { 
+                'b':set(['i','s','e']),
+                'i':set(['b','s','e']),
+                's':set(['b','i','e']),
+                'e':set(['i','s','b'])
+                }
             if (lp,mp,rp,pos) in self.mdef.tiedlist:
                 return lp+"-"+mp+"_"+pos+"+"+rp
-            for pos in poslist:
-                if (lp,mp,rp,pos) in self.mdef.tiedlist:
-                    return lp+"-"+mp+"_"+pos+"+"+rp
+            for p in poslist[pos]:
+                if (lp,mp,rp,p) in self.mdef.tiedlist:
+                    return lp+"-"+mp+"_"+p+"+"+rp
             if ('-',mp,'-','-') in self.mdef.tiedlist:
                 return mp
             else:
@@ -176,7 +186,7 @@ class ContextDependencySphinx( ):
     def _make_aux( self, lp, rp ):
         """Generate auxiliary symbol arcs."""
         issym = lp+','+rp
-
+        
         for a in self.aux:
             if self.auxout==True:
                 self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
@@ -227,7 +237,7 @@ class ContextDependencySphinx( ):
             self._make_arc( self.start, self.eps, lp )
             self._make_aux( self.eps, lp )
             #Monophone arcs
-            self._make_arc( self.sil, lp, self.eps )
+            self._make_arc( self.eps, lp, self.eps )
             self._make_final( lp, self.eps )
             for mp in self.phons:
                 #Initial to Internal arcs
