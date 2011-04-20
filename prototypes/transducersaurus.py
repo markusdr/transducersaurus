@@ -6,6 +6,7 @@ from arpa2fst import ArpaLM
 from lexicon2fst import Lexicon
 from cd2fst import ContextDependency
 from cd2fstSphinx import ContextDependencySphinx
+from hmm2wfst import hmm2wfst
 
 class GenerateCascade( ):
     """
@@ -20,7 +21,7 @@ class GenerateCascade( ):
     def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", 
             basedir="", amtype="htk", semiring="log", failure=False, auxout=False, 
             eps="<eps>", sil="sil", convert=None ):
-        self._grammar     = re.compile(r"\s*(?:(det|min|\*|\.)|([CLGT])|([\)\(]))")
+        self._grammar     = re.compile(r"\s*(?:(det|min|\*|\.)|([HCLGT])|([\)\(]))")
         self.tiedlist     = tiedlist
         self.lexicon      = lexicon
         self.arpa         = arpa
@@ -138,13 +139,29 @@ class GenerateCascade( ):
            relevant to models based on HTK acoustic models.
         """
                    
-        command="""
+        command=""
+
+        if 'H' in self.wfsts:
+            command="""
+fstcompile --arc_type=SEMIRING --osymbols=PREFIX.h.isyms PREFIX.e.fst.txt | 
+fstarcsort --sort_type=olabel - | 
+fstcompose - PREFIX.FST.fst > PREFIX.eFST.fst"""
+            command=command.replace("\n"," ").replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("FST",self.final_fst)
+            self.final_fst = "eFST".replace("FST",self.final_fst)
+        elif 'C' in self.wfsts:
+            command="""
 fstcompile --arc_type=SEMIRING --isymbols=PREFIX.hmm.syms --osymbols=PREFIX.c.isyms PREFIX.d.fst.txt | 
 fstarcsort --sort_type=olabel - | 
 fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
-        command=command.replace("\n"," ").replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("FST",self.final_fst)
+            command=command.replace("\n"," ").replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("FST",self.final_fst)
+            self.final_fst = "dFST".replace("FST",self.final_fst)
+        else:
+            print "Requested mapper but no C or H fst. Aborting..."
+            return
+
+        print command
         os.system( command )
-        self.final_fst = "dFST".replace("FST",self.final_fst)
+
         return
 		
     def _compose( self, l, r ):
@@ -203,9 +220,14 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
 
     def _minimize( self, l ):
         """
-           Run minimization on an input WFST.
+           Run minimization on an input WFST.  By default this 
+           also calls 'fstencode', encoding both labels and weights.
+           The result could be further mininimized by not encoding these
+           portions, however it tends to be *much* more costly to do so,
+           and the benefits are generally limited.  
+           At some point I'll add the encoding options to transducersaurus...
         """
-        command = "fstminimize PREFIX.FST.fst > PREFIX.minFST.fst"
+        command = "fstencode --encode_labels=true --encode_weights=true PREFIX.FST.fst PREFIX.codex | fstminimize - | fstencode --decode=true - PREFIX.codex > PREFIX.minFST.fst"
         command = command.replace("PREFIX",self.prefix).replace("FST",l.lower())
         print command
         os.system( command )
@@ -277,11 +299,27 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
                 C.generate_deterministic()
                 C.print_all_syms()
             print "Compiling C..."
-            if self.auxout:
+            if self.auxout or 'H' in self.wfsts:
                 command = "fstcompile --arc_type=SEMIRING --ssymbols=PREFIX.c.ssyms --isymbols=PREFIX.c.isyms --osymbols=PREFIX.l.isyms PREFIX.c.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.c.fst"
             else:
                 command = "fstcompile --arc_type=SEMIRING --ssymbols=PREFIX.c.ssyms --isymbols=PREFIX.hmm.syms --osymbols=PREFIX.l.isyms PREFIX.c.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.c.fst"
             command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix) 
+            os.system( command )
+        if 'H' in self.wfsts:
+            print "PREFIX.aux".replace("PREFIX",self.prefix)
+            H = hmm2wfst( 
+                self.tiedlist, amtype=self.amtype, 
+                eps=self.eps, aux_file="PREFIX.aux".replace("PREFIX",self.prefix), 
+                prefix=self.prefix, auxout=self.auxout, isyms_file="PREFIX.c.isyms".replace("PREFIX",self.prefix)
+                )
+            H.mdef2wfst( )
+            if self.auxout:
+                command = "fstcompile --arc_type=SEMIRING --isymbols=PREFIX.h.isyms --osymbols=PREFIX.c.isyms PREFIX.h.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.h.fst"
+                H.makemapper( )
+            else:
+                command = "fstcompile --arc_type=SEMIRING --osymbols=PREFIX.c.isyms PREFIX.h.fst.txt | fstarcsort --sort_type=olabel - > PREFIX.h.fst"
+            H.write_isyms( )
+            command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix)
             os.system( command )
         return
 
