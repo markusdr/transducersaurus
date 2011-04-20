@@ -113,9 +113,9 @@ class ContextDependencySphinx( ):
                 return self.eps
 
         mapped = cmpsym( lp, mp, rp )
-        if self.auxout==True:
-            self._write_mapper_arc( mapped, orig )
-            return orig
+        #if self.auxout==True:
+        #    self._write_mapper_arc( mapped, orig )
+        #    return orig
             
         return mapped
 
