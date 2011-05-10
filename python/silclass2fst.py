@@ -3,17 +3,19 @@ import re, math
 
 class Silclass( ):
 
-    def __init__( self, vocabfile, sil="<sil>", eps="<eps>", silperc=0.117, prefix="silclass" ):
+    def __init__( self, vocabfile, sil="<sil>", eps="<eps>", silperc=0.117, prefix="silclass", failure=None ):
         self.vocabfile = vocabfile
         self.sil       = sil
         self.eps       = eps
         self.silperc   = silperc
         self.nosilperc = 1.0-silperc
         self.vocab     = set([])
-        self.isyms     = set([])
-        self.isyms.add(self.sil)
-        self.osyms     = set([])
-        self.osyms.add(self.sil)
+        self.failure   = failure
+        self.isyms     = set([self.sil])
+        self.osyms     = set([self.sil])
+        if failure:
+            self.isyms.add(failure)
+            self.osyms.add(failure)
         self.prefix    = prefix
 
     def read_vocab( self ):
@@ -28,7 +30,7 @@ class Silclass( ):
         return
 
     def log2tropical( self, val ):
-        tropval = math.log(10.0) * math.log(float(val)) * -1.0
+        tropval = math.log(float(val)) * -1.0
         return tropval 
 
     def generate_silclass( self ):
@@ -44,6 +46,8 @@ class Silclass( ):
             self.isyms.add(word)
             self.osyms.add(word)
             count += 1
+        if self.failure:
+            silclass_fp.write("0 0 %s %s\n" % (self.failure, self.failure))
         silclass_fp.write("0\n")
         silclass_fp.close()
         return

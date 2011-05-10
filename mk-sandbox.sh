@@ -15,7 +15,7 @@ else
     mkdir ${1}
 fi
 
-cp prototypes/* ${1}
+cp python/* ${1}
 
 echo "Copied python prototype build scripts to: ${1}..."
 echo "See transducersaurus/README.txt for additional testing details."

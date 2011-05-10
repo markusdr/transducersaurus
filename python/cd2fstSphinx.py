@@ -8,7 +8,7 @@ class ContextDependencySphinx( ):
     Use an HTK format tiedlist to handle logical->physical triphone mapping.
     """
 
-    def __init__( self, mdef, aux, start="<start>", prefix="cd", eps="<eps>", sil="SIL", auxout=False, minimal=True ):
+    def __init__( self, mdef, aux, start="<start>", prefix="cd", eps="<eps>", sil="SIL", auxout=0, minimal=True ):
         self.sil      = sil
         self.mdef_file = mdef
         self.mdef     = None
@@ -32,8 +32,8 @@ class ContextDependencySphinx( ):
         self._init_mapper( )
         
     def _init_mapper( self ):
-        if self.auxout==True:
-            self.mapper_ofp = open("PREFIX.d.fst.txt".replace("PREFIX",self.prefix),"w")
+        #if self.auxout==True:
+        self.mapper_ofp = open("PREFIX.d.fst.txt".replace("PREFIX",self.prefix),"w")
         return
         
     def _write_mapper_arc( self, mapped, orig ):
@@ -113,9 +113,9 @@ class ContextDependencySphinx( ):
                 return self.eps
 
         mapped = cmpsym( lp, mp, rp )
-        #if self.auxout==True:
-        #    self._write_mapper_arc( mapped, orig )
-        #    return orig
+        self._write_mapper_arc( mapped, orig )
+        if self.auxout>0:
+            return orig
             
         return mapped
 
@@ -188,9 +188,12 @@ class ContextDependencySphinx( ):
         issym = lp+','+rp
         
         for a in self.aux:
-            if self.auxout==True:
+            if self.auxout>0:
                 self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
-                self._write_mapper_arc( self.eps, a )
+                if self.auxout==1:
+                    self._write_mapper_arc( self.eps, a )
+                elif self.auxout==2:
+                    self._write_mapper_arc( a, a )
             else:
                 self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, self.eps, a))
         return
@@ -251,7 +254,7 @@ class ContextDependencySphinx( ):
         for a in self.aux:
             self.osyms.add(a)
             self.isyms.add(a)
-        if self.auxout==True:
+        if self.auxout>0:
             self.mapper_ofp.write("0\n")
             self.mapper_ofp.close()
         self.cd_ofp.close()

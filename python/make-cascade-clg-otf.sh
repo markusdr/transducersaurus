@@ -2,6 +2,11 @@
 # Same as make-cascade-clgt.sh, but does not build the silclass
 #  transducer.  Only generates a generic CLG cascade.
 #This version uses on-the-fly static composition.
+echo "Support for this script has been removed.  The last revision supporting this is:"
+echo "c9f755acf470"
+echo "See http://code.google.com/p/transducersaurus/source for details"
+exit
+
 if [ $# != 5 ]
 then
     echo "SYNTAX: ${0} <arpalm> <dictionary> <prefix> <hmmdefs> <tiedlist>"

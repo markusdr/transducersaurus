@@ -7,7 +7,7 @@ class ContextDependency( ):
     Use an HTK format tiedlist to handle logical->physical triphone mapping.
     """
 
-    def __init__( self, phons, aux, tiedlist=None, start="<start>", prefix="cd", eps="<eps>", sil="sil", auxout=False ):
+    def __init__( self, phons, aux, tiedlist=None, start="<start>", prefix="cd", eps="<eps>", sil="sil", auxout=0 ):
         self.phons_f  = phons
         self.sil      = sil
         self.auxout   = auxout
@@ -31,7 +31,7 @@ class ContextDependency( ):
         self._init_mapper( )
 
     def _init_mapper( self ):
-        if self.auxout==True:
+        if self.auxout>0:
             self.mapper_ofp = open("PREFIX.d.fst.txt".replace("PREFIX",self.prefix),"w")
         return
         
@@ -106,7 +106,7 @@ class ContextDependency( ):
         else:
             mapped = self.eps
 
-        if self.auxout==True:
+        if self.auxout>0:
             self._write_mapper_arc( mapped, orig )
             return orig
         else:
@@ -147,7 +147,7 @@ class ContextDependency( ):
         issym = lp+','+rp
 
         for a in self.aux:
-            if self.auxout==True:
+            if self.auxout>0:
                 self.cd_ofp.write("%s %s %s %s\n" % (issym, issym, a, a))
                 self._write_mapper_arc( self.eps, a )
             else:

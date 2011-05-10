@@ -6,19 +6,23 @@ class Lexicon( ):
 
     """Build a lexicon transducer."""
 
-    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="SIL", eps="<eps>", weighted=False ):
+    def __init__( self, dictfile, prefix="lexicon", lextype="htk", sil="<sil>", eps="<eps>", weighted=False, failure=None ):
         """Initialize some basic variables."""
         self.dictfile   = dictfile
         self.prons   = defaultdict(int)
         self.sil     = sil
         self.eps     = eps
-        self.sil     = sil
         self.aux     = set([])
         self.phones  = set([])
         self.isyms   = set([])
         self.osyms   = set([])
+        if failure:
+            self.aux.add(failure)
+            self.isyms.add(failure)
+            self.osyms.add(failure)
         self.start   = 0
         self.last_s  = 2
+        self.failure = failure
         self.weighted = weighted
         self.prefix  = prefix
         self.lextype = lextype
@@ -88,6 +92,9 @@ class Lexicon( ):
                 self.last_s += 1
             lexicon_ofp.write("%d\n" % (self.last_s))
             self.last_s += 1
+        if self.failure:
+            lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.start, self.last_s, self.failure, self.failure ))
+            lexicon_ofp.write("%d\n" % (self.last_s))
         dict_fp.close()
         lexicon_ofp.close()
 
@@ -151,8 +158,26 @@ class Lexicon( ):
             
 
 if __name__=="__main__":
-    import sys
-    L = Lexicon( sys.argv[1], prefix=sys.argv[2], lextype=sys.argv[3] )
+    import sys, argparse
+
+    example = "%s --dict my.dic --type htk --prefix test" % sys.argv[0]
+
+    parser  = argparse.ArgumentParser( description=example )
+    parser.add_argument('--dict',      "-a", help='ARPA format language model.', required=True )
+    parser.add_argument('--prefix',    "-p", help='Prefix to be appended to all output files.', default="test" )
+    parser.add_argument('--type',      "-t", help='"htk" or "sphinx" format output.  Sphinx format adds positional information.', default="htk" )
+    parser.add_argument('--eps',       "-e", help='Epsilon symbol, defaults to <eps>.', default="<eps>" )
+    parser.add_argument('--sil',       "-s", help='Specify the optional silence marker.  Defaults to <sil>.', default="<sil>" )
+    parser.add_argument('--weighted',    "-w", help='The dictionary is weighted. Defaults to False.', default=False, action="store_true" )
+    parser.add_argument('--verbose',   "-v", help='Verbose mode.', default=False, action="store_true" )
+    args = parser.parse_args()
+    
+    if args.verbose==True:
+        print "Running with the following arguments."
+        for attr, value in args.__dict__.iteritems():
+            print attr, "=", value
+    
+    L = Lexicon( args.dict, prefix=args.prefix, lextype=args.type, eps=args.eps, sil=args.sil, weighted=args.weighted )
     L.generate_lexicon_transducer()
     L.print_all_syms()
     L.print_aux()

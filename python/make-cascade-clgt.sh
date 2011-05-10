@@ -1,6 +1,9 @@
 #!/bin/bash
-# Same as make-cascade-clgt.sh, but does not build the silclass
-#  transducer.  Only generates a generic CLG cascade.
+echo "Support for this script has been removed.  The last revision supporting this is:"
+echo "c9f755acf470"
+echo "See http://code.google.com/p/transducersaurus/source for details"
+exit
+
 if [ $# != 5 ]
 then
     echo "SYNTAX: ${0} <arpalm> <dictionary> <prefix> <hmmdefs> <tiedlist>"
@@ -13,15 +16,22 @@ hmmdefs=${4}
 tiedlist=${5}
 
 #Juicer is VERY picky about the symbol order.
-#  See the python script below for details, but the basic rules are:
+#  See the perl one-liner below for details, but the basic rules are:
 #  **Unique words (not pronunciations) MUST appear in the EXACT same order as the reference
 #    pronunciation dictionary.
 #  **Any symbols that are NOT in the reference dictionary MUST come at the
 #    END of the list - see <UNK> in the script below.
+#  It's crazy but it's the only way it works.
 #  Other problems may occur depending on the value of LC_ALL
 #   which defines the sort order on your linux machine.
 echo "Generating the word symbols list..."
 ./checkVocab.py ${dict} ${arpa} ${prefix}
+
+echo "Generating T WFST..."
+./silclass2fst.py ${prefix}.word.syms ${prefix}
+echo "Compiling T WFST..."
+fstcompile --arc_type=log --isymbols=${prefix}.word.syms --osymbols=${prefix}.word.syms ${prefix}.t.fst.txt > ${prefix}.t.fst
+
 echo "Generating G WFST..."
 ./arpa2fst.py ${arpa} ${prefix}.g.fst.txt ${prefix}
 echo "Compiling G WFST..."
@@ -42,10 +52,12 @@ echo "Compiling C WFST..."
 grep "^~h " ${hmmdefs} | perl -e'my $cnt=1; print "<eps> 0\n"; while(<>){chomp; s/^~h \"//; s/\"$//; print $_." ".$cnt."\n"; $cnt++;}' > ${prefix}.hmm.syms
 fstcompile --arc_type=log --ssymbols=${prefix}.c.ssyms --isymbols=${prefix}.hmm.syms --osymbols=${prefix}.l.isyms ${prefix}.c.fst.txt > ${prefix}.c.fst
 
-echo "Performing L*G Composition and Determinization..."
-fstcompose ${prefix}.l.fst ${prefix}.g.fst | fstdeterminize - > ${prefix}.lg.fst
-echo "Performing C*LG Composition..."
-fstcompose ${prefix}.c.fst ${prefix}.lg.fst | fstprint - > ${prefix}.clg.fst.txt
+echo "Performing G*T Composition..."
+fstcompose ${prefix}.g.fst ${prefix}.t.fst | fstproject --project_output=true - | fstarcsort --sort_type=ilabel - > ${prefix}.gt.fst
+echo "Performing L*GT Composition and Determinization..."
+fstcompose ${prefix}.l.fst ${prefix}.gt.fst | fstdeterminize - > ${prefix}.lgt.fst
+echo "Performing C*LGT Composition..."
+fstcompose ${prefix}.c.fst ${prefix}.lgt.fst | fstprint - > ${prefix}.clgt.fst.txt
 
 echo "Done building cascade.  Run juicer test with:"
-echo "./juicer-test.sh ${prefix}.clg.fst.txt ${dict} ${prefix}.word.syms ${prefix}.hmm.syms ${hmmdefs}"
+echo "./juicer-test.sh ${prefix}.clgt.fst.txt ${dict} ${prefix}.word.syms ${prefix}.hmm.syms ${hmmdefs}"

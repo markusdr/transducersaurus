@@ -23,7 +23,7 @@ def make_hmmsyms( hmmdefs, eps, prefix, aux ):
 
 def check_arpa_vocab( arpalm, lexicon, vocabfile, lastid ):
     """
-       Read read the unigram entries from an ARPA
+       Read the unigram entries from an ARPA
        LM and check them against a pronunciation lexicon.
        Make sure there is at least one entry in the 
        lexicon for each unigram.
@@ -39,7 +39,7 @@ def check_arpa_vocab( arpalm, lexicon, vocabfile, lastid ):
         if line.startswith("\\1-grams"):
             unigram=True
             continue
-        if line.startswith("\\2-grams"):
+        if line.startswith("\\2-grams") or line.startswith("\\end"):
             unigram=False
             break
         if unigram:
@@ -55,7 +55,7 @@ def check_arpa_vocab( arpalm, lexicon, vocabfile, lastid ):
     arpalm_fp.close()
     return missing
 
-def load_vocab_from_lexicon( lexicon, prefix="test", eps="<eps>" ):
+def load_vocab_from_lexicon( lexicon, prefix="test", eps="<eps>", failure=None ):
     """Load vocabulary from a pronunciation lexicon."""
     lexicon_fp = open(lexicon,"r")
     vocabfile = "%s.word.syms"%prefix
@@ -71,6 +71,9 @@ def load_vocab_from_lexicon( lexicon, prefix="test", eps="<eps>" ):
             word_ofp.write("%s\t%d\n"%(word,count))
             count += 1
         vocab[word]=pron
+    if failure:
+        word_ofp.write("%s\t%d\n" % (failure,count))
+        count += 1
     lexicon_fp.close()
     word_ofp.close()
     return vocab, vocabfile, count

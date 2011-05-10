@@ -13,7 +13,7 @@ C++ implementations of all the basic WFST algorithms needed to generate a standa
 LVCSR WFST cascade. It supports cascade generation for both the Juicer and TCubed 
 WFST decoders.  Sphinx support is on the way.
 
-In order to create a sandbox and test the prototype python tools, run the following,
+In order to create a sandbox and test the python tools, run the following,
 $ ./mk-sandbox.sh /path/to/my/sandbox
 $ cd /path/to/my/sandbox
 $ emacs -nw README.txt

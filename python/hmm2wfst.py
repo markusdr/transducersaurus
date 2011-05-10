@@ -10,7 +10,7 @@ class hmm2wfst( ):
        The format should be transparent however, looking at a 
         Sphinx AM mdef file.
     """
-    def __init__( self, hmm_file, prefix="test", amtype="sphinx", aux_file=None, eps="<eps>", auxout=False, isyms_file=None ):
+    def __init__( self, hmm_file, prefix="test", amtype="sphinx", aux_file=None, eps="<eps>", auxout=0, isyms_file=None ):
         self.hmm_file  = hmm_file
         self.isyms_map = self._make_isym_map( isyms_file )
         self.aux       = self._read_aux( aux_file )
@@ -74,12 +74,19 @@ class hmm2wfst( ):
                 continue
 
             hmms = tuple([ int(i)+1 for i in self.mdef.allfields[n][6:9] ])
+            #state 1
             self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n" % (
                     0,
                     ssym,
                     hmms[0],
                     hisym ) )
-            self._gen_aux( ssym )
+            self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n" % (
+                    ssym,
+                    ssym,
+                    hmms[0],
+                    self.eps ) )
+            #self._gen_aux( ssym )
+            #state 2
             self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n"  % (
                     ssym,
                     ssym+1,
@@ -87,6 +94,17 @@ class hmm2wfst( ):
                     self.eps ) )
             self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n"  % (
                     ssym+1,
+                    ssym+1,
+                    hmms[1],
+                    self.eps ) )
+            #state 3
+            self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n"  % (
+                    ssym+1,
+                    ssym+2,
+                    hmms[2],
+                    self.eps ) )
+            self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n"  % (
+                    ssym+2,
                     ssym+2,
                     hmms[2],
                     self.eps ) )
@@ -97,12 +115,17 @@ class hmm2wfst( ):
             
             self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n"  % (
                     ssym+2,
-                    0,
+                    ssym+3,
                     haux,
+                    self.eps ) )
+            self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n" % (
+                    ssym+3,
+                    0,
+                    self.eps,
                     self.eps ) )
             self.mapsyms = self.mapsyms.union(hmms)
             self.haux.add(haux)
-            ssym += 3
+            ssym += 4
 
         self.isyms = self.isyms.union(self.mapsyms)
         self.hmm_file_ofp.write("0\n")
@@ -136,7 +159,7 @@ class hmm2wfst( ):
         """Generate the auxiliary symbol arcs."""
 
         for asym in self.aux:
-            if self.auxout==True:
+            if self.auxout>0:
                 self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n" % (ssym, ssym, asym, asym))
             else:
                 self.hmm_file_ofp.write("%d\t%d\t%s\t%s\n" % (ssym, ssym, self.eps, asym))
@@ -172,7 +195,7 @@ if __name__=="__main__":
     parser.add_argument("--amtype",  "-t", help="Acoustic Model type. 'sphinx', or 'htk'.", default="sphinx" )
     parser.add_argument("--eps",     "-e", help="Epsilon symbol.", default="<eps>" )
     parser.add_argument("--isyms",   "-i", help="Input symbols for C. Used for mapping if supplied.", default=None )
-    parser.add_argument("--auxout",  "-o", help="Generate input auxiliary symbols.", default=False, action="store_true" )
+    parser.add_argument("--auxout",  "-o", help="Generate input auxiliary symbols. Set to 0, 1, or 2.", default=0, type=int )
     parser.add_argument("--verbose", "-v", help="Verbose mode.", default=False, action="store_true" )
     args = parser.parse_args( )
 
