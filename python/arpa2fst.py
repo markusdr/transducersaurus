@@ -72,8 +72,6 @@ class ArpaLM( ):
         arpa_ofp = open(self.arpaofile, "w")
         arpa_ofp.write(self.make_arc( "<start>", self.sb, self.sb, self.sb, 0.0 ))
         for line in arpa_ifp:
-            if "<UNK>" in line:
-                continue
             line = line.strip()
             #Process based on n-gram order
             #print self.order
