@@ -8,6 +8,7 @@ from cd2fst import ContextDependency
 from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
 
+__version__="0.0.0.1"
 
 class GenerateCascade( ):
     """
@@ -21,11 +22,12 @@ class GenerateCascade( ):
     
     def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", basedir="", 
                   amtype="htk", semiring="log", failure=None, auxout=3, encode_weights=False, encode_labels=False,
-                  eps="<eps>", sil="sil", convert=None, p_semiring=None, m_semiring=None ):
+                  eps="<eps>", sil="sil", convert=None, p_semiring=None, m_semiring=None, order=0 ):
         self._grammar       = re.compile(r"\s*(?:(push|rmeps|det|min|\*|\.)|([HCLGT])|([\)\(]))")
         self.tiedlist       = tiedlist
         self.lexicon        = lexicon
         self.arpa           = arpa
+        self.order          = order
         self.buildcommand   = buildcommand.replace(" ","")
         self.hmmdefs        = hmmdefs
         self.basedir        = basedir
@@ -257,8 +259,14 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         print command
         os.system( command )
 
+        print "Fixing any possible bogus misses in the relabeler..."
+        fixRelabel(
+            "PREFIX.FST1FST2.rlbl.txt".replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower()), 
+            new_relabel="PREFIX.FST1FST2.rlbl.fix.txt".replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
+            )
+
         print "Relabeling right-hand composition operand..."
-        command = "fstrelabel --relabel_ipairs=PREFIX.FST1FST2.rlbl.txt PREFIX.FST2.fst | fstarcsort - > PREFIX.FST2.rlbl.fst"
+        command = "fstrelabel --relabel_ipairs=PREFIX.FST1FST2.rlbl.fix.txt PREFIX.FST2.fst | fstarcsort - > PREFIX.FST2.rlbl.fst"
         command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
         print command
         os.system( command )
@@ -378,7 +386,7 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             os.system( command )
         if 'G' in self.wfsts:
             print "Building G: ARPA LM transducer..."
-            arpa = ArpaLM( self.arpa, "PREFIX.g.fst.txt".replace("PREFIX",self.prefix), prefix=self.prefix, eps=self.eps, boff=self.failure)
+            arpa = ArpaLM( self.arpa, "PREFIX.g.fst.txt".replace("PREFIX",self.prefix), prefix=self.prefix, eps=self.eps, boff=self.failure, maxorder=self.order )
             arpa.arpa2fst( )
             arpa.print_all_syms( )
             print "Compiling G..."
@@ -483,6 +491,7 @@ if __name__=="__main__":
     parser.add_argument('--auxout',     "-o", help='Generate explicit input aux labels for the context-dependency transducer. Will automatically generate appropriate symbols based on cascade requirements.  Supported values are: "0"=No input aux symbols; "1"=Map c-level triphones to the AM, generate no input aux symbols; "2"=Generate input aux symbols for C, map arcs to AM, map arcs to H level; "3"=Determine behaviour automatically (recommended).', default=3, type=int )
     parser.add_argument('--basedir',    "-b", help='Base directory for model storage.', default="", required=False)
     parser.add_argument('--command',    "-c", help='Build command specifying OpenFST composition and optimization operations.\nValid operators are\n\t"*" - composition,\n\t"." - static on-the-fly composition,\n\t"det" - determinization,\n\t"min" - minimization', required=True)
+    parser.add_argument('--version',    "-V", help="Print Version information and exit.", action="version", version="transducersaurus.py: V%s"%(__version__) )
     parser.add_argument('--convert',    "-n", help='Convert the final cascade to either Juicer or TCubed format.  Valid values are "t" (tcubed), "j" (juicer) or "tj" for both.', default=None, required=False )
     parser.add_argument('--eps',        "-e", help='Epsilon symbol.', default="<eps>")
     parser.add_argument('--failure',    "-f", help='Use failure transitions to represent back-off arcs in the LM.', default=None, required=False )
@@ -494,13 +503,17 @@ if __name__=="__main__":
     parser.add_argument('--semiring',   "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log" )
     parser.add_argument('--psemiring',  "-u", help="Semiring to use for pushing operations.  Defaults to the value of '--semiring'.", default=None )
     parser.add_argument('--msemiring',  "-m", help="Semiring to use for minimization operations.  Defaults to the value of '--semiring'.", default=None )
-    parser.add_argument('--ew',               help="Argument for fstminimize: encode_weights. Defaults to False.", default=False, action="store_true" )
-    parser.add_argument('--el',               help="Argument for fstminimize: encode_labels. Defaults to False.", default=False, action="store_true" )
+    parser.add_argument('--encode_weights', "-ew", help="Argument for fstminimize: encode_weights. Defaults to False.", default=False, action="store_true" )
+    parser.add_argument('--encode_labels',  "-el", help="Argument for fstminimize: encode_labels. Defaults to False.",  default=False, action="store_true" )
+    parser.add_argument('--order',          "-or", help="Build N-grams only up to '--order'. Default behavior is to build *all* N-grams.", default=0, type=int )
     parser.add_argument('--sil',        "-s", help='Silence monophone symbol.', default="sil")
     parser.add_argument('--tiedlist',   "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
     parser.add_argument('--verbose',    "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 
+    if args.version==True:
+        print "Transducersaurus version:", __version__
+        sys.exit()
     if args.amtype=="htk" and args.hmmdefs==None:
         print "HTK format AMs require an hmmdefs file.  Please specify one."
         sys.exit()
@@ -508,6 +521,7 @@ if __name__=="__main__":
         print """WARNING: Your build command includes at least one call to OTF compose, but you have specified the log semiring.  
        Determinization of the lexicon transducer will be performed in the tropical semiring."""
     if args.verbose:
+        print "Version:", __version__
         print_args( args )
 	
     
@@ -522,8 +536,9 @@ if __name__=="__main__":
         semiring=args.semiring, 
         p_semiring=args.psemiring,
         m_semiring=args.msemiring,
-        encode_weights=args.ew,
-        encode_labels=args.el,
+        encode_weights=args.encode_weights,
+        encode_labels=args.encode_labels,
+        order=args.order,
         eps=args.eps,
         sil=args.sil,
         auxout=args.auxout,

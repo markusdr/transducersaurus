@@ -78,6 +78,60 @@ def load_vocab_from_lexicon( lexicon, prefix="test", eps="<eps>", failure=None )
     word_ofp.close()
     return vocab, vocabfile, count
 
+def fixRelabel( relabels, new_relabel="tmpd8s9382" ):
+    """
+      The fstconvert does not always produce a complete 
+       bijection between the original and post-convert labels.
+      Labels in a symbol table that do  not appear in the FST
+       may not get new labels.  If these appear in the additional
+       component FST used for composition, the result may be incorrect.
+      This fixes the problem by completing the bijection.
+    """
+
+    orig_l = 1
+    new2orig = {}
+    missing  = set([])
+    max = 0
+
+    relabel_fp = open(relabels, "r")
+    new_relabel_fp = open(new_relabel,"w")
+
+    for line in relabel_fp:
+        new_relabel_fp.write(line)
+
+        line = line.strip()
+        orig, new = line.split("\t")
+        orig = int(orig)
+        new  = int(new)
+        if orig > max:
+            max = orig
+        if new > max:
+            max = new
+            
+        if not orig_l==orig:
+            missing.add(orig_l)
+        orig_l += 1
+        new2orig[new] = orig
+    relabel_fp.close()
+
+    while orig_l<=max:
+        missing.add(orig_l)
+        orig_l += 1
+
+    for l in xrange(1,orig_l):
+        if l not in new2orig:
+            new_relabel_fp.write("%d\t%d\n" % (missing.pop(),l))
+        if len(missing)==0:
+            break
+    new_relabel_fp.close()
+
+    if not len(missing)==0:
+        print "There are still unmapped symbols!"
+        print missing
+
+    return
+
+
 if __name__=="__main__":
     import sys
 
