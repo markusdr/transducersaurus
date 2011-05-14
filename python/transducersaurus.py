@@ -8,7 +8,7 @@ from cd2fst import ContextDependency
 from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
 
-__version__="0.0.0.1"
+__version__="0.0.0.2"
 
 class GenerateCascade( ):
     """
@@ -20,10 +20,20 @@ class GenerateCascade( ):
 	   optimization routine parser.
     """
     
-    def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test", basedir="", 
-                  amtype="htk", semiring="log", failure=None, auxout=3, encode_weights=False, encode_labels=False,
-                  eps="<eps>", sil="sil", convert=None, p_semiring=None, m_semiring=None, order=0 ):
-        self._grammar       = re.compile(r"\s*(?:(push|rmeps|det|min|\*|\.)|([HCLGT])|([\)\(]))")
+    def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test",
+                  amtype="htk", semiring="log", failure=None, auxout=3, basedir="",
+                  eps="<eps>", sil="sil", convert=None, order=0 ):
+        
+        self._grammar = re.compile(
+             r"""\s*(?:
+                (push(?:_[lt])? | rmeps | det(?:_[lt])? | min(?:_(?:[ws]*[lt]?) | (?:[lt]?[ws]*))? | \* | \.) | #Operators and operations
+                ([HCLGT]) |  #WFST components
+                ([\)\(])  |  #Order of operations parens
+                ([\[\]])  |  #Optional argument brackets
+                (log|tropical|standard|trop|el|ew|weights|labels|symbols),? | #Optional bracket arguments
+                (.) ) #Left overs
+              """, re.X
+            )
         self.tiedlist       = tiedlist
         self.lexicon        = lexicon
         self.arpa           = arpa
@@ -34,10 +44,6 @@ class GenerateCascade( ):
         self.prefix         = self._set_prefix(prefix)
         self.amtype         = amtype
         self.semiring       = semiring
-        self.p_semiring     = self._set_p_semiring(p_semiring)
-        self.m_semiring     = self._set_m_semiring(m_semiring)
-        self.encode_weights = encode_weights
-        self.encode_labels  = encode_labels
         self.failure        = failure
         self.eps            = eps
         self.sil            = sil
@@ -48,22 +54,6 @@ class GenerateCascade( ):
         self.word_osyms	    = None
         self.am_isyms       = None
         
-    def _set_p_semiring( self, p_semiring ):
-        """Set the semiring to use for pushing, if applicable."""
-        
-        if p_semiring==None:
-            return self.semiring
-        
-        return p_semiring
-
-    def _set_m_semiring( self, m_semiring ):
-        """Set the semiring to use for pushing, if applicable."""
-        
-        if m_semiring==None:
-            return self.semiring
-        
-        return m_semiring
-            
     def _set_aux( self, auxout ):
         #this should work for now but is not very future proof.
         if not auxout==3:
@@ -79,33 +69,92 @@ class GenerateCascade( ):
 
     def _set_prefix( self, prefix ):
         if self.basedir=="auto":
-            self.basedir = prefix+"-"+self.buildcommand.replace("(","a").replace(")","b").replace("*","c").replace(".","o")
+            self.basedir = self.buildcommand.replace("(","a").replace(")","b").replace("*","c").replace(".","o")
+            self.basedir = self.basedir.replace("[","_").replace("log","l").replace("tropical","t").replace("weights","w")
+            self.basedir = self.basedir.replace("labels","s").replace("trop","t").replace("standard","t")
+            self.basedir = self.basedir.replace("ew","w").replace("el","s").replace(",","").replace("]","")
+            self.basedir = re.sub(r"(_[swlt]+)_",r"\1",self.basedir)
+            self.basedir = prefix + "-" + self.basedir
         if self.basedir:
             if not os.path.exists(self.basedir):
                 print "Creating dir: %s" % self.basedir
                 os.makedirs(self.basedir)
         prefix = os.path.join(self.basedir,prefix)
         return prefix 
-
+        
     def _opGTE( self, top, op ):
         """
            Determine operator precedence for the WFST operations 
            allowed in self._grammar.
         """
-        prec = { 'det':10, 'min':10, 'rmeps':10, 'push':10, '*':5, '.':5 }
-        if prec[op]<=prec[top]:
-            return True
+        prec = { 
+            re.compile(r'^det(_(l|t))?$'):10, 
+            re.compile(r'^min((_(l|t))|(_s)|(_w))*$'):10, 
+            'rmeps':10,
+            re.compile(r'^push(_(l|t))?$'):10, 
+            '*':5, 
+            '.':5,
+            re.compile(r"^(log|tropical|standard|trop|el|ew|weights|labels|symbols)$"):2,
+            }
+        
+        if op in prec:
+            if prec[op]<=prec[top]:
+                return True
+            else:
+                return False
         else:
-            return False
+            for key in prec:
+                if not type(key)==str and key.match(op):
+                    if prec[key]<=prec[top]:
+                        return True
+                    else:
+                        return False
+        return
+
+    def _map_oargs( self, oargs ):
+        """
+           Process any optional arguments.
+        """
+        arg_map = {
+            'log':'l',
+            'tropical':'t',
+            'standard':'t',
+            'trop':'t',
+            'el':'s',
+            'ew':'w',
+            'weights':'w',
+            'labels':'s',
+            'symbols':'s',
+            's':'s',
+            'w':'w'
+            }
+        mapped_oargs = set([])
+        for arg in oargs:
+            mapped_oargs.add(arg_map[arg])
+        if "l" in mapped_oargs and "t" in mapped_oargs:
+            raise SyntaxError, "Both 'log' AND 'tropical' semirings were specified.  Please pick just one!"
+        return mapped_oargs
+
+    def _merge( self, tok, oargs ):
+        oargs = self._map_oargs( oargs )
+        parts = tok.split("_")
+        if len(parts)==2:
+            oargs.update(list(parts[1]))
+        return parts[0], "".join(oargs)
 
     def _toPostfix( self, program ):
         """
-	   Tokenize and convert an infix expression to postfix notation
-	   based on the regex grammar specified in self._grammar
+           Tokenize and convert an infix expression to postfix notation
+           based on the regex grammar specified in self._grammar
         """
+        lparen = re.compile(r"\(")
+        rparen = re.compile(r"\)")
+        if not len(lparen.findall(program))==len(rparen.findall(program)):
+            raise SyntaxError, "Unbalanced parentheses."
         tokens = []
         stack  = []
-        for op, fst, paren in  self._grammar.findall(program):
+        oargs  = []
+        for op, fst, paren, bracket, brarg, lo in  self._grammar.findall(program):
             if op:
                 while len(stack)>0 and not stack[-1]=="(":
                     if self._opGTE( stack[-1], op ):
@@ -113,9 +162,29 @@ class GenerateCascade( ):
                     else:
                         break
                 stack.append(op)
+            elif lo:
+                raise SyntaxError, "Bad token: %s"%lo
             elif fst:
                 self.wfsts.add(fst)
                 tokens.append(fst)
+            elif brarg:
+                stack.append(brarg)
+            elif bracket:
+                if bracket=="[":
+                    stack.append(bracket)
+                    oargs=[]
+                elif bracket=="]":
+                    tok = stack.pop()
+                    while not tok=="[":
+                        oargs.append(tok)
+                        tok = stack.pop()
+                    tok = stack.pop()
+                    if tok=="rmeps" or tok=="*" or tok==".":
+                        print "Ignoring bracket args:", ", ".join(oargs), "for operator:", tok
+                    else:
+                        tok, oargs = self._merge( tok, oargs )
+                        tok = tok+"_"+oargs
+                    stack.append(tok)
             elif paren:
                 if paren=="(":
                     stack.append(paren)
@@ -147,15 +216,15 @@ class GenerateCascade( ):
                 r = stack.pop()
                 l = stack.pop()
                 stack.append(self._composeOTF(l, r))
-            elif tok=="det":
+            elif tok.startswith("det"):
                 l = stack.pop()
-                stack.append(self._determinize(l))
-            elif tok=="min":
+                stack.append(self._determinize(l, tok))
+            elif tok.startswith("min"):
                 l = stack.pop()
-                stack.append(self._minimize(l))
-            elif tok=="push":
+                stack.append(self._minimize(l, tok))
+            elif tok.startswith("push"):
                 l = stack.pop()
-                stack.append(self._push(l))
+                stack.append(self._push(l, tok))
             elif tok=="rmeps":
                 l = stack.pop()
                 stack.append(self._rmepsilon(l) )
@@ -279,44 +348,91 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         self.final_fst = "FST1FST2.lkhd".replace("FST1",l.lower()).replace("FST2",r.lower())
         return self.final_fst
 
-    def _determinize( self, l ):
+    def _check_opts( self, tok ):
+        """Check for any auxiliary arguments passed to the operation."""
+        
+        encode_weights = False
+        encode_labels  = False
+        semiring       = self.semiring
+        
+        opt = ""; args = ""
+        parts = tok.split("_")
+        opt = parts[0]
+        if len(parts)==2: args = parts[1]
+        
+        for arg in list(args):
+            if arg=="w":
+                encode_weights = True
+            elif arg=="s":
+                encode_labels  = True
+            elif arg=="l":
+                semiring = "log"
+            elif arg=="t":
+                semiring = "standard"
+              
+        if not args=="":
+            args = "_"+args
+        
+        return encode_weights, encode_labels, semiring, args
+                
+    def _determinize( self, l, tok ):
         """
            Run determinization on an input WFST.
+           Also handles optional calls to fstencode or operation specific semiring changes.
         """
+        
+        encode_weights, encode_labels, semiring, args = self._check_opts( tok )
+        
         if l.lower()=="l" and self.semiring=="log":
-            #Determinizing an un-weighted lexicon in the log semiring will cause chaos
-            command = "fstprint PREFIX.FST.fst | fstcompile - | fstdeterminize - | fstprint - | fstcompile --arc_type=log - > PREFIX.detFST.fst" 
-        else:
+            #Determinizing an un-weighted lexicon in the log semiring will result in chaos
+            print "Performing determinization of unweighted lexicon in the tropical semiring."
+            command = "fstprint PREFIX.FST.fst | fstcompile - | fstdeterminize - | fstprint - | fstcompile --arc_type=log - > PREFIX.detARGSFST.fst"
+        elif encode_weights==True or encode_labels==True:
+            if semiring==self.semiring:
+                command = "fstencode --encode_labels=ENCL --encode_weights=ENCW PREFIX.FST.fst PREFIX.codex | fstdeterminize - | fstencode --decode=true - PREFIX.codex > PREFIX.detARGSFST.fst"
+            else:
+                command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=DSEMIRING - | fstencode --encode_labels=ENCL --encode_weights=ENCW - PREFIX.codex | fstdeterminize - | fstencode --decode=true - PREFIX.codex | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.detARGSFST.fst"
+        elif semiring==self.semiring:
             command = "fstdeterminize PREFIX.FST.fst > PREFIX.detFST.fst" 
-        command = command.replace("PREFIX",self.prefix).replace("FST",l.lower())
+        else:
+            command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=DSEMIRING - | fstdeterminize - | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.detARGSFST.fst"
+            
+        command = command.replace("ENCL",encode_labels.__str__().lower()).replace("ENCW",encode_weights.__str__().lower())
+        command = command.replace("DSEMIRING",semiring).replace("SEMIRING",self.semiring)
+        command = command.replace("PREFIX",self.prefix).replace("FST",l.lower()).replace("ARGS",args)
+        
         print command
         os.system( command )
-        self.final_fst = "detFST".replace("FST",l.lower())
+        self.final_fst = "detARGSFST".replace("FST",l.lower()).replace("ARGS",args)
+        
         return self.final_fst
 
-    def _minimize( self, l ):
+    def _minimize( self, l, tok ):
         """
-           Run minimization on an input WFST.  By default this 
-           also calls 'fstencode', encoding both labels and weights.
-           The result could be further mininimized by not encoding these
-           portions, however it tends to be more costly to do so
-           and the additional benefits are generally limited.  
-
-           At some point I'll add the encoding options to transducersaurus.
-           In the meantime, the default behavior can be modified by editing the 
-           command value below.
+           Run minimization on an input WFST.
+           Also handles optional calls to fstencode or operation specific semiring changes.
         """
-        command = ""
-        if self.m_semiring==self.semiring:
-            command = "fstencode --encode_labels=ENCL --encode_weights=ENCW PREFIX.FST.fst PREFIX.codex | fstminimize - | fstencode --decode=true - PREFIX.codex > PREFIX.minFST.fst"
+        
+        encode_weights, encode_labels, semiring, args = self._check_opts( tok )
+        
+        if encode_weights==True or encode_labels==True:
+            if semiring==self.semiring:
+                command = "fstencode --encode_labels=ENCL --encode_weights=ENCW PREFIX.FST.fst PREFIX.codex | fstminimize - | fstencode --decode=true - PREFIX.codex > PREFIX.minARGSFST.fst"
+            else:
+                command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=MSEMIRING - | fstencode --encode_labels=ENCL --encode_weights=ENCW - PREFIX.codex | fstminimize - | fstencode --decode=true - PREFIX.codex | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.minARGSFST.fst"
+        elif semiring==self.semiring:
+            command = "fstminimize PREFIX.FST.fst > PREFIX.minFST.fst"
         else:
-            command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=MSEMIRING - | fstencode --encode_labels=ENCL --encode_weights=ENCW - PREFIX.codex | fstminimize - | fstencode --decode=true - PREFIX.codex | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.minFST.fst"
-        command = command.replace("ENCL",self.encode_labels.__str__().lower()).replace("ENCW",self.encode_weights.__str__().lower())
-        command = command.replace("MSEMIRING",self.m_semiring).replace("SEMIRING",self.semiring)
-        command = command.replace("PREFIX",self.prefix).replace("FST",l.lower())
+            command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=MSEMIRING - | fstminimize - | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.minARGSFST.fst"
+            
+        command = command.replace("ENCL",encode_labels.__str__().lower()).replace("ENCW",encode_weights.__str__().lower())
+        command = command.replace("MSEMIRING",semiring).replace("SEMIRING",self.semiring)
+        command = command.replace("PREFIX",self.prefix).replace("FST",l.lower()).replace("ARGS",args)
+
         print command
         os.system( command )
-        self.final_fst = "minFST".replace("FST",l.lower())
+        self.final_fst = "minARGSFST".replace("FST",l.lower()).replace("ARGS",args)
+        
         return self.final_fst
 
     def _rmepsilon( self, l ):
@@ -335,7 +451,7 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         
         return self.final_fst
 
-    def _push( self, l ):
+    def _push( self, l, tok ):
         """
            Weight push an input WFST.
            By default the build semiring will be used.  This behavior 
@@ -344,14 +460,25 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
            See 'fstpush --help' for more dadvanced behavior.
         """
         
-        if self.p_semiring==self.semiring:
+        encode_weights, encode_labels, semiring, args = self._check_opts( tok )
+
+        if encode_weights==True or encode_labels==True:
+            if semiring==self.semiring:
+                command = "fstencode --encode_labels=ENCL --encode_weights=ENCW PREFIX.FST.fst PREFIX.codex | fstpush --push_weights=true - | fstencode --decode=true - PREFIX.codex > PREFIX.puARGSFST.fst"
+            else:
+                command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=MSEMIRING - | fstencode --encode_labels=ENCL --encode_weights=ENCW - PREFIX.codex | fstpush --push_weights=true - | fstencode --decode=true - PREFIX.codex | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.puARGSFST.fst"
+        elif semiring==self.semiring:
             command = "fstpush --push_weights=true PREFIX.FST.fst > PREFIX.puFST.fst"
         else:
-            command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=PSEMIRING - | fstpush --push_weights=true - | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.puFST.fst"
-        command = command.replace("PREFIX",self.prefix).replace("FST",l.lower()).replace("PSEMIRING",self.p_semiring).replace("SEMIRING",self.semiring)
+            command = "fstprint PREFIX.FST.fst | fstcompile --arc_type=MSEMIRING - | fstpush --push_weights=true - | fstprint - | fstcompile --arc_type=SEMIRING - > PREFIX.puARGSFST.fst"
+
+        command = command.replace("ENCL",encode_labels.__str__().lower()).replace("ENCW",encode_weights.__str__().lower())
+        command = command.replace("PSEMIRING",semiring).replace("SEMIRING",self.semiring)
+        command = command.replace("PREFIX",self.prefix).replace("FST",l.lower()).replace("ARGS",args)
+
         print command
         os.system(command)
-        self.final_fst = "puFST".replace("FST",l.lower())
+        self.final_fst = "puARGSFST".replace("FST",l.lower()).replace("ARGS",args)
 
         return self.final_fst
 
@@ -485,13 +612,73 @@ def print_args( args ):
 
 if __name__=="__main__":
     import sys, operator, re, argparse
+
     example = """./transducersaurus.py --tiedlist tiedlist --hmmdefs hmmdefs --lexicon lexicon.dic --grammar lm3g.arpa --prefix test --command "(C*det(L*G)" """
-    parser = argparse.ArgumentParser(description=example)
+    grammar_info = """
+WFST Cascade Grammar description:
+
+Examples: 
+    CLGT cascade using static lookahead composition:
+          (C*det(L)).(G*T)
+    CLG cascade using standard composition, one call to determinize:
+          C*det(L*G)
+    CLGT cascade with final minimization and determinization:
+          min(det((C*det(L)).(G*T)))
+    CLGT cascade with final minimization and determinization, minimization will be performed with label-encoding:
+          min[labels](det((C*det(L)).(G*T)))
+    HCLGT cascade with final determinization and pushing, pushing will be performed in the log semiring, 
+      with label-encoding, the first call to determinize will be performed in the log semiring, using weight-encoding:
+          push[log,labels](det(min(H*(det((C*det_lw(L)).(G*T))))))
+          
+The WFST compilation DSL supports the following WFST components:
+  * H - HMM level transducer (Sphinx format only)
+  * C - Context-dependencty transducer (Sphinx or HTK)
+  * L - Lexicon transducer (Sphinx or HTK)
+  * G - Grammar, ARPA format stochastic langauge models
+  * T - Silence class transducer
+  
+Operations:
+  * rmeps:  Epsilon removal.
+  * push:   Pushing.
+  * det:    Determinize
+  * min:    Minimize
+  * '*':    Composition
+  * '.':    Static lookahead composition
+
+The default semiring can be overridden  for 'push', 'det', and 'min' in one of two ways:
+  * shorthand:
+     - det_l  (log semiring)
+     - det_t  (tropical semiring)
+  * brackets:
+     - det[log]  (log semiring)
+     - det[tropical|trop|standard]  (tropical semiring)
+
+It is also possible to specify label and/or weight encoding for the 'push', 'det', and 'min' operations:
+  * shorthand, using 'min' as an example:
+     - min_w  (encode weights)
+     - min_s  (encode labels)
+     - min_ws/min_sw  (encode weights AND labels)
+  * brackets:
+     - min[weights|ew,labels|el]  (encode weights AND labels)
+
+These can be combined as well:
+  * min[weights,labels,log]
+
+Redundant specifications will be ignored:
+  * min_w[weights,labels] -> min_wl
+
+Conflicts will raise an error:
+  * push[log,trop] -> "Pick a semiring!"
+
+Unbalanced parentheses will be caught:
+  * (C*det(L).(G*T) -> "Unbalanced parentheses!"
+"""
+    parser = argparse.ArgumentParser(description=example, epilog=grammar_info, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--amtype',     "-a", help='Acoustic model type.  May be set to "htk" or "sphinx".', default="htk" )
     parser.add_argument('--auxout',     "-o", help='Generate explicit input aux labels for the context-dependency transducer. Will automatically generate appropriate symbols based on cascade requirements.  Supported values are: "0"=No input aux symbols; "1"=Map c-level triphones to the AM, generate no input aux symbols; "2"=Generate input aux symbols for C, map arcs to AM, map arcs to H level; "3"=Determine behaviour automatically (recommended).', default=3, type=int )
     parser.add_argument('--basedir',    "-b", help='Base directory for model storage.', default="", required=False)
     parser.add_argument('--command',    "-c", help='Build command specifying OpenFST composition and optimization operations.\nValid operators are\n\t"*" - composition,\n\t"." - static on-the-fly composition,\n\t"det" - determinization,\n\t"min" - minimization', required=True)
-    parser.add_argument('--version',    "-V", help="Print Version information and exit.", action="version", version="transducersaurus.py: V%s"%(__version__) )
+    parser.add_argument('--version',    "-V", help='Print Version information and exit.', action="version", version="transducersaurus.py: V%s"%(__version__) )
     parser.add_argument('--convert',    "-n", help='Convert the final cascade to either Juicer or TCubed format.  Valid values are "t" (tcubed), "j" (juicer) or "tj" for both.', default=None, required=False )
     parser.add_argument('--eps',        "-e", help='Epsilon symbol.', default="<eps>")
     parser.add_argument('--failure',    "-f", help='Use failure transitions to represent back-off arcs in the LM.', default=None, required=False )
@@ -501,17 +688,13 @@ if __name__=="__main__":
     parser.add_argument('--no_compile', "-z", help='Specify whether or not to run the component compilation routines.  Set to false if you have already built your components and just want to combine and optimize them.', default=False, action="store_true")
     parser.add_argument('--prefix',     "-p", help='A file prefix.  Will be prepended to all model files created during cascade generation.', default="test")
     parser.add_argument('--semiring',   "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log" )
-    parser.add_argument('--psemiring',  "-u", help="Semiring to use for pushing operations.  Defaults to the value of '--semiring'.", default=None )
-    parser.add_argument('--msemiring',  "-m", help="Semiring to use for minimization operations.  Defaults to the value of '--semiring'.", default=None )
-    parser.add_argument('--encode_weights', "-ew", help="Argument for fstminimize: encode_weights. Defaults to False.", default=False, action="store_true" )
-    parser.add_argument('--encode_labels',  "-el", help="Argument for fstminimize: encode_labels. Defaults to False.",  default=False, action="store_true" )
-    parser.add_argument('--order',          "-or", help="Build N-grams only up to '--order'. Default behavior is to build *all* N-grams.", default=0, type=int )
+    parser.add_argument('--order',      "-O", help='Build N-grams only up to "--order". Default behavior is to build *all* N-grams.', default=0, type=int )
     parser.add_argument('--sil',        "-s", help='Silence monophone symbol.', default="sil")
     parser.add_argument('--tiedlist',   "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
     parser.add_argument('--verbose',    "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 
-    if args.version==True:
+    if "version" in args.__dict__:
         print "Transducersaurus version:", __version__
         sys.exit()
     if args.amtype=="htk" and args.hmmdefs==None:
@@ -534,10 +717,6 @@ if __name__=="__main__":
         prefix=args.prefix, 
         amtype=args.amtype, 
         semiring=args.semiring, 
-        p_semiring=args.psemiring,
-        m_semiring=args.msemiring,
-        encode_weights=args.encode_weights,
-        encode_labels=args.encode_labels,
         order=args.order,
         eps=args.eps,
         sil=args.sil,
@@ -549,6 +728,3 @@ if __name__=="__main__":
     if args.no_compile==False:
         cascade.compileFSTs( )
     cascade.generateCascade( )
-	
-
-
