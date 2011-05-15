@@ -7,8 +7,9 @@ from lexicon2fst import Lexicon
 from cd2fst import ContextDependency
 from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
+from regex2wfst import *
 
-__version__="0.0.0.2"
+__version__="0.0.0.3"
 
 class GenerateCascade( ):
     """
@@ -22,7 +23,7 @@ class GenerateCascade( ):
     
     def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test",
                   amtype="htk", semiring="log", failure=None, auxout=3, basedir="",
-                  eps="<eps>", sil="sil", convert=None, order=0 ):
+                  eps="<eps>", sil="sil", convert=None, order=0, regex=False ):
         
         self._grammar = re.compile(
              r"""\s*(?:
@@ -51,6 +52,7 @@ class GenerateCascade( ):
         self.wfsts          = set([])
         self.postfix        = self._toPostfix(self.buildcommand)
         self.convert        = convert
+        self.regex          = regex
         self.word_osyms	    = None
         self.am_isyms       = None
         
@@ -512,13 +514,23 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             command = command.replace("WORDS",self.word_osyms).replace("PREFIX",self.prefix).replace("SEMIRING",self.semiring)
             os.system( command )
         if 'G' in self.wfsts:
-            print "Building G: ARPA LM transducer..."
-            arpa = ArpaLM( self.arpa, "PREFIX.g.fst.txt".replace("PREFIX",self.prefix), prefix=self.prefix, eps=self.eps, boff=self.failure, maxorder=self.order )
-            arpa.arpa2fst( )
-            arpa.print_all_syms( )
-            print "Compiling G..."
-            command = "fstcompile --arc_type=SEMIRING --acceptor=true --ssymbols=PREFIX.g.ssyms --isymbols=WORDS PREFIX.g.fst.txt | fstarcsort --sort_type=ilabel - > PREFIX.g.fst"
-            command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("WORDS",self.word_osyms)
+            print "Building G: Grammar transducer..."
+            if self.regex==True:
+                print "JFSG style grammar."
+                jfsg = Parser( self.arpa, prefix=self.prefix, eps=self.eps )
+                s, states = jfsg.postfix2WFST()
+                jfsg.fsaprint( s, states )
+                jfsg.print_isyms()
+                command = "fstcompile --arc_type=SEMIRING --acceptor=true --isymbols=WORDS PREFIX.g.fst.txt | fstarcsort --sort_type=ilabel - > PREFIX.g.fst"
+                command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("WORDS",self.word_osyms)
+            else:
+                print "ARPA format LM."
+                arpa = ArpaLM( self.arpa, "PREFIX.g.fst.txt".replace("PREFIX",self.prefix), prefix=self.prefix, eps=self.eps, boff=self.failure, maxorder=self.order )
+                arpa.arpa2fst( )
+                arpa.print_all_syms( )
+                print "Compiling G..."
+                command = "fstcompile --arc_type=SEMIRING --acceptor=true --ssymbols=PREFIX.g.ssyms --isymbols=WORDS PREFIX.g.fst.txt | fstarcsort --sort_type=ilabel - > PREFIX.g.fst"
+                command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("WORDS",self.word_osyms)
             os.system( command )
         if 'L' in self.wfsts:
             print "Building L: lexicon transducer..."
@@ -682,7 +694,7 @@ Unbalanced parentheses will be caught:
     parser.add_argument('--convert',    "-n", help='Convert the final cascade to either Juicer or TCubed format.  Valid values are "t" (tcubed), "j" (juicer) or "tj" for both.', default=None, required=False )
     parser.add_argument('--eps',        "-e", help='Epsilon symbol.', default="<eps>")
     parser.add_argument('--failure',    "-f", help='Use failure transitions to represent back-off arcs in the LM.', default=None, required=False )
-    parser.add_argument('--grammar',    "-g", help='An ARPA format language model.', required=True)
+    parser.add_argument('--grammar',    "-g", help='An input grammar file.  May be an ARPA format LM or a JFSG style grammar.', required=True)
     parser.add_argument('--hmmdefs',    "-d", help='hmmdefs file.  Needed for HTK acoustic models.', default=None, required=False )
     parser.add_argument('--lexicon',    "-l", help='List of words to transcribe.', required=True)
     parser.add_argument('--no_compile', "-z", help='Specify whether or not to run the component compilation routines.  Set to false if you have already built your components and just want to combine and optimize them.', default=False, action="store_true")
@@ -690,6 +702,7 @@ Unbalanced parentheses will be caught:
     parser.add_argument('--semiring',   "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log" )
     parser.add_argument('--order',      "-O", help='Build N-grams only up to "--order". Default behavior is to build *all* N-grams.', default=0, type=int )
     parser.add_argument('--sil',        "-s", help='Silence monophone symbol.', default="sil")
+    parser.add_argument('--jfsg',      "-j", help='The grammar is a regular expression/JFSG style grammar.', default=False, action="store_true" )
     parser.add_argument('--tiedlist',   "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
     parser.add_argument('--verbose',    "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
@@ -723,7 +736,8 @@ Unbalanced parentheses will be caught:
         auxout=args.auxout,
         failure=args.failure,
         basedir=args.basedir,
-        convert=args.convert
+        convert=args.convert,
+        regex=args.jfsg
     )
     if args.no_compile==False:
         cascade.compileFSTs( )
