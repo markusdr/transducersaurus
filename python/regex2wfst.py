@@ -20,7 +20,7 @@ class Parser():
                                 ([^\(\)\?\+\*\s]+) # Words/Tokens
                                 )
                                     """%(Parser.CONCAT), re.X )
-        self.grammar  = grammar.decode("utf8")
+        self.grammar  = self._load_grammar(grammar)
         self.prefix   = prefix
         self.semiring = semiring
         self.eps      = eps
@@ -35,6 +35,15 @@ class Parser():
             
         self.postfix  = self._toPostfix( self.grammar )
         
+    def _load_grammar( self, grammar_file ):
+        """Load the grammar file."""
+        
+        grammar = ""
+        ifp = open(grammar_file,"r")
+        for line in ifp:
+            grammar += line.decode("utf8")
+        ifp.close()
+        return grammar
         
     def _opGTE( self, top, op ):
         """
