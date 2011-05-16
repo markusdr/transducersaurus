@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import re
-
+from wfst import WFST
 
 class Parser():
     """
@@ -10,10 +10,14 @@ class Parser():
        expression into a WFST.
     """
     
-    START  = "2738c9s0"
-    CONCAT = "i12938sx"
-    
-    def __init__( self, grammar, prefix="test", semiring="log", eps="<eps>" ):
+    START  = "2738c9s0h"
+    CONCAT = "i12938sx7"
+    PLUS   = "as767sk3w"
+    STAR   = "s79w043jk"
+    HATENA = "vytw723i2"
+    ALT    = "asiytg10c"
+
+    def __init__( self, grammar, prefix="test", semiring="log", eps="<eps>", algorithm="new" ):
         self.language = re.compile(r"""\s*(?: 
                                 ([\*\+\?\|]|%s) |  #Operators
                                 ([\)\(])   |  #Parentheses
@@ -25,15 +29,24 @@ class Parser():
         self.semiring = semiring
         self.eps      = eps
         self.isyms    = set([])
+        self.max      = 0
         self.prec = {
             "*" : 5,
             "+" : 5,
             "?" : 5,
-            Parser.CONCAT : 4,
-            "|" : 3
+            Parser.CONCAT : 3,
+            "|" : 4
             }
-            
+        self.algorithm = algorithm
         self.postfix  = self._toPostfix( self.grammar )
+        
+    def regex2wfst( self ):
+        if self.algorithm=="new":
+            self.postfix2WFSTnew( )
+        elif self.algorithm=="classic":
+            self.postfix2WFSTclassic( )
+        return
+            
         
     def _load_grammar( self, grammar_file ):
         """Load the grammar file."""
@@ -74,7 +87,65 @@ class Parser():
             raise ValueError, "Token: (%s) is not a valid weight!" % parts[1]
         return " ".join(parts)
         
-    def _toPostfix( self, program ):
+    def _toPostfix( self, tokens ):
+        """
+          Convert the regex to postfix format.
+          The implementation is described here:
+          http://swtch.com/~rsc/regexp/regexp1.html
+        """
+
+        p = [paren() for i in xrange(100)]
+        dst = []
+        nalt  = 0
+        natom = 0
+        g = 0
+        regex = tokens.split(" ")
+        for i in xrange(len(regex)):
+            if regex[i]=='(':
+                if natom > 1:
+                    natom -= 1
+                    dst.append(Parser.CONCAT)
+                p[g].nalt = nalt
+                p[g].natom = natom
+                g += 1
+                nalt  = 0
+                natom = 0
+            elif regex[i]=='|':
+                if natom==0: return None
+                for k in xrange(natom-1):
+                    dst.append(Parser.CONCAT)
+                natom = 0
+                nalt += 1
+            elif regex[i]==')':
+                if g==len(p): return None
+                if natom==0 : return None
+                for k in xrange(natom-1):
+                    dst.append(Parser.CONCAT)
+                natom = 0
+                for k in xrange(nalt):
+                    dst.append('|')
+                g -= 1
+                nalt  = p[g].nalt
+                natom = p[g].natom
+                natom += 1
+            elif regex[i]=='*' or regex[i]=='+' or regex[i]=='?':
+                if natom == 0: return None
+                dst.append(regex[i])
+            else:
+                if natom > 1:
+                    natom -= 1
+                    dst.append(Parser.CONCAT)
+                dst.append(regex[i])
+                natom += 1
+        for k in xrange(natom-1):
+            dst.append(Parser.CONCAT)
+        natom = 0
+        for i in xrange(nalt):
+            dst.append('|')
+        
+        return dst
+        
+    def _toPostfixNewBroken( self, program ):
         """
           Tokenize an convert an infix regular expression grammar to 
           postfix notation.
@@ -130,13 +201,14 @@ class Parser():
                         tok = stack.pop()
         while len(stack)>0:
             tokens.append(stack.pop())
-        
+
         return tokens
         
-    def postfix2WFST( self ):
+    def postfix2WFSTnew( self ):
         """
           Generate a WFST from a postfix-format regular expression.
-          This follows the general Thompson algorithm.
+          This follows the modified Thompson algorithm described here:
+          http://swtch.com/~rsc/regexp/regexp1.html
         """
         
         stack = []
@@ -187,13 +259,174 @@ class Parser():
                 states[nstate]=state( nstate=nstate, c=tok, sout=None, sout2=None )
                 stack.append( frag( startstate=states[nstate], ptrlist=[(nstate,{'sout':states[nstate].sout})] ) )
                 nstate += 1
+
         s = stack.pop()
         states[nstate]=state( nstate=nstate, c=Parser.START, sout=-1, sout2=-1 )
         s, states = patch( s, states[nstate], states )
         
-        return s, states
+        self._printThomsponNew( s, states )
+        
+        return
 
-    def fsaprint( self, e, states ):
+    def postfix2WFSTclassic( self ):
+        """
+          Generate a WFST from a postfix-format regular expression.
+          This follows the general Thompson algorithm.
+        """
+        
+        stack = []
+        states = {}
+        nstate = 0
+        while len(self.postfix)>0:
+            tok = self.postfix.pop(0)
+            if tok=="*":
+                stack.append( self._star( stack.pop() ) )
+            elif tok=="+":
+                stack.append( self._plus( stack.pop() ) )
+            elif tok=="?":
+                stack.append( self._hatena( stack.pop() ) )
+            elif tok=="|":
+                r = stack.pop()
+                l = stack.pop()
+                stack.append( self._alt( l, r ) )
+            elif tok==Parser.CONCAT:
+                r = stack.pop()
+                l = stack.pop()
+                stack.append( self._append( l, r ) )
+            else:
+                tok = self._checkWeight(tok)
+                stack.append(tok)
+        fsa = stack.pop()
+        self._printThomsponClassic( fsa )
+
+        return 
+
+    def _printThomsponClassic( self, fsa ):
+        """Print out the WFST."""
+
+        ofp = open("PREFIX.g.fst.txt".replace("PREFIX",self.prefix),"w")
+
+        ofp.write("%s\t%s\t%s\n" % (0, fsa.start, self.eps))
+        for state in fsa.arcs:
+            for arc in fsa.arcs[state]:
+                ofp.write("%s\t%s\t%s\t%s\n" % (state, arc[2], arc[0].strip(), arc[3]))
+        ofp.write("%d\n" % (fsa.final))
+        ofp.close()
+        
+        return
+        
+    def _star( self, s ):
+        """Perform the 'star' operation."""
+
+        if type(s)==str() or type(s)==unicode:
+            fsa = WFST( start=self.max+1, eps=self.eps, semiring="standard" )
+            fsa.add_arc( fsa.start+1, s, s, fsa.start+2 )
+        else:
+            fsa = s
+
+        fsa.add_arc( fsa.start, self.eps, self.eps, fsa.start+1 )
+        fsa.add_arc( fsa.start+2, self.eps, self.eps, fsa.start+3 )
+        fsa.add_arc( fsa.start+2, self.eps, self.eps, fsa.start+1 )
+        fsa.add_arc( fsa.start, self.eps, self.eps, fsa.start+3 )
+        fsa.final = fsa.start+3
+        self.max  = fsa.max
+        self.isyms.update(fsa.isyms)
+        
+        return fsa
+
+    def _plus( self, s ):
+        if type(s)==unicode:
+            fsa = WFST( start=self.max+1, eps=self.eps, semiring="standard" )
+            fsa.add_arc( fsa.start, s, s, fsa.start+1 )
+            fsa.final = fsa.start+1
+        else:
+            fsa = s
+        fsa = self._append( fsa, fsa )
+        self.isyms.update(fsa.isyms)
+        return fsa
+
+    def _hatena( self, s ):
+        """Perform the 'zero or one' operation."""
+        fsa = self._alt( s, self.eps )
+        self.isyms.update(fsa.isyms)
+        return fsa
+
+    def _alt( self, l, r ):
+        """Perform the 'alternate' operation."""
+        if type(l)==str or type(l)==unicode:
+            fsa1 = WFST( start=self.max+1, eps=self.eps, semiring="standard" )
+            fsa1.add_arc( fsa1.start, self.eps, self.eps, fsa1.start+1 )
+            fsa1.add_arc( fsa1.start+1, l, l, fsa1.start+2 )
+            fsa1.final = fsa1.start+2
+        else:
+            fsa1 = l
+            self.max += 1
+            fsa1.add_arc( self.max, self.eps, self.eps, fsa1.start )
+            fsa1.start = self.max
+        if fsa1.max>self.max:
+            self.max = fsa1.max
+
+        if type(r)==str or type(r)==unicode:
+            fsa2 = WFST( start=fsa1.start, eps=self.eps, semiring="standard" )
+            fsa2.add_arc( fsa2.start, self.eps, self.eps, fsa2.start+1 )
+            fsa2.add_arc( fsa2.start+1, r, r, fsa2.start+2 )
+            fsa2.final = fsa2.start+2
+        else:
+            fsa2 = r
+            fsa2.add_arc( fsa1.start, self.eps, self.eps, fsa2.start )
+            fsa2.start = fsa1.start
+        
+        for state in fsa2.arcs:
+            for arc in fsa2.arcs[state]:
+                if state in fsa1.arcs:
+                    fsa1.arcs[state].add( arc )
+                else:
+                    fsa1.arcs[state] = set([ arc ])
+
+        if fsa1.max>=self.max:
+            self.max = fsa1.max+1
+        if fsa2.max>=self.max:
+            self.max = fsa2.max+1
+        fsa1.add_arc( fsa1.final, self.eps, self.eps, self.max ) 
+        fsa1.add_arc( fsa2.final, self.eps, self.eps, self.max )
+        fsa1.final = self.max
+        self.isyms.update(fsa1.isyms)
+
+        return fsa1
+        
+
+    def _append( self, l, r ):
+        """Perform the 'concatenation' operation."""
+        if type(l)==str() or type(l)==unicode:
+            fsa1 = WFST( start=self.max+1, eps=self.eps, semiring="standard" )
+            fsa1.add_arc( fsa1.start, l, l, fsa1.start+1 )
+            fsa1.final = fsa1.start+1
+        else:
+            fsa1 = l
+        if fsa1.final>self.max:
+            self.max = fsa1.final
+
+        if type(r)==str() or type(r)==unicode:
+            fsa2 = WFST( start=self.max+1, eps=self.eps, semiring="standard" )
+            fsa2.add_arc( fsa2.start, r, r, fsa2.start+1 )
+            fsa2.final = fsa2.start+1
+        else:
+            fsa2 = r
+        
+        for state in fsa2.arcs:
+            for arc in fsa2.arcs[state]:
+                if state in fsa1.arcs:
+                    fsa1.arcs[state].add( arc )
+                else:
+                    fsa1.arcs[state] = set([ arc ])
+        fsa1.add_arc( fsa1.final, self.eps, self.eps, fsa2.start )
+        fsa1.final = fsa2.final
+        if fsa1.final>self.max:
+            self.max = fsa1.final
+        self.isyms.update(fsa1.isyms)
+        return fsa1
+
+    def _printThomsponNew( self, e, states ):
         """Print out the WFST."""
         
         ofp = open("PREFIX.g.fst.txt".replace("PREFIX",self.prefix),"w")
@@ -206,7 +439,7 @@ class Parser():
             word   = ""
             if len(parts)==2:
                 weight = parts[1]
-            word = parts[0]
+            word = parts[0].strip()
             self.isyms.add(word)
             ofp.write("%s\t%s\t%s\t%s\n" % (states[s].nstate, states[s].sout, word.encode("utf8"), weight.encode("utf8")))
             if not states[s].sout2==None:
@@ -227,6 +460,10 @@ class Parser():
         
         return
         
+class paren( ):
+    def __init__(self):
+        self.nalt  = 0
+        self.natom = 0
 
 class state( ):
     """Toy state object."""
@@ -274,6 +511,7 @@ if __name__=="__main__":
     parser.add_argument('--grammar',  "-g", help='JFSG format regex grammar.', required=True )
     parser.add_argument('--prefix',   "-p", help='Output files prefix.', default="test" )
     parser.add_argument('--eps',      "-e", help='The epsilson token.', default="<eps>" )
+    parser.add_argument('--algorithm',     "-a", help='Specify the conversion algorithm. "classic" or "new".  Default is "new".', default="new" )
     parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true" )
     args = parser.parse_args()
     
@@ -282,9 +520,8 @@ if __name__=="__main__":
         for attr, value in args.__dict__.iteritems():
             print attr, "=", value
             
-    gramm = Parser( args.grammar, prefix=args.prefix, eps=args.eps )
-    s, states = gramm.postfix2WFST()
-    gramm.fsaprint( s, states )
+    gramm = Parser( args.grammar, prefix=args.prefix, eps=args.eps, algorithm=args.algorithm )
+    gramm.regex2wfst()
     gramm.print_isyms()
                     
                     

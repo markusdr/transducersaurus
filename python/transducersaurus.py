@@ -9,7 +9,7 @@ from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
 from regex2wfst import *
 
-__version__="0.0.0.3"
+__version__="0.0.0.4"
 
 class GenerateCascade( ):
     """
@@ -515,11 +515,10 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             os.system( command )
         if 'G' in self.wfsts:
             print "Building G: Grammar transducer..."
-            if self.regex==True:
+            if self.regex:
                 print "JFSG style grammar."
-                jfsg = Parser( self.arpa, prefix=self.prefix, eps=self.eps )
-                s, states = jfsg.postfix2WFST()
-                jfsg.fsaprint( s, states )
+                jfsg = Parser( self.arpa, prefix=self.prefix, eps=self.eps, algorithm=self.regex )
+                jfsg.regex2wfst()
                 jfsg.print_isyms()
                 command = "fstcompile --arc_type=SEMIRING --acceptor=true --isymbols=WORDS PREFIX.g.fst.txt | fstarcsort --sort_type=ilabel - > PREFIX.g.fst"
                 command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("WORDS",self.word_osyms)
@@ -702,7 +701,7 @@ Unbalanced parentheses will be caught:
     parser.add_argument('--semiring',   "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log" )
     parser.add_argument('--order',      "-O", help='Build N-grams only up to "--order". Default behavior is to build *all* N-grams.', default=0, type=int )
     parser.add_argument('--sil',        "-s", help='Silence monophone symbol.', default="sil")
-    parser.add_argument('--jfsg',      "-j", help='The grammar is a regular expression/JFSG style grammar.', default=False, action="store_true" )
+    parser.add_argument('--jfsg',      "-j", help='The grammar is a regular expression/JFSG style grammar. Specify "classic" or "new" for the algorithm.', default=None )
     parser.add_argument('--tiedlist',   "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
     parser.add_argument('--verbose',    "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
