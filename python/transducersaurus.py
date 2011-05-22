@@ -37,7 +37,7 @@ from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
 from regex2wfst import *
 
-__version__="0.0.0.5"
+__version__="0.0.0.6"
 
 class GenerateCascade( ):
     """
@@ -51,7 +51,7 @@ class GenerateCascade( ):
     
     def __init__( self, tiedlist, lexicon, arpa, buildcommand, hmmdefs=None, prefix="test",
                   amtype="htk", semiring="log", failure=None, auxout=3, basedir="",
-                  eps="<eps>", sil="sil", convert=None, order=0, regex=False ):
+                  eps="<eps>", sil="sil", convert=None, order=0, regex=False, normalizeG=False ):
         
         self._grammar = re.compile(
              r"""\s*(?:
@@ -81,8 +81,19 @@ class GenerateCascade( ):
         self.postfix        = self._toPostfix(self.buildcommand)
         self.convert        = convert
         self.regex          = regex
+        self.normalize       = self._set_normalize( normalizeG )
         self.word_osyms	    = None
         self.am_isyms       = None
+        
+    def _set_normalize( self, normalizeG ):
+        """
+          Run the WFST normalization program.
+          All this does is normalize the arc weights for each state.
+        """
+        if normalizeG==True:
+            return "| ./normalizeG -i - -o - "
+        else:
+            return ""
         
     def _set_aux( self, auxout ):
         #this should work for now but is not very future proof.
@@ -556,8 +567,11 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
                 arpa.arpa2fst( )
                 arpa.print_all_syms( )
                 print "Compiling G..."
-                command = "fstcompile --arc_type=SEMIRING --acceptor=true --ssymbols=PREFIX.g.ssyms --isymbols=WORDS PREFIX.g.fst.txt | fstarcsort --sort_type=ilabel - > PREFIX.g.fst"
-                command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("WORDS",self.word_osyms)
+                command = "fstcompile --arc_type=SEMIRING --acceptor=true --ssymbols=PREFIX.g.ssyms --isymbols=WORDS PREFIX.g.fst.txt | fstarcsort --sort_type=ilabel - NORMALIZE > PREFIX.g.fst"
+                command = command.replace("SEMIRING",self.semiring).replace("PREFIX",self.prefix).replace("WORDS",self.word_osyms).replace("NORMALIZE", self.normalize)
+                #os.system(command)
+                #print "Normalizing G..."
+                #command = "./normalizeG -i PREFIXun.g.fst -o PREFIX.g.fst".replace("PREFIX",self.prefix)
             os.system( command )
         if 'L' in self.wfsts:
             print "Building L: lexicon transducer..."
@@ -729,8 +743,9 @@ Unbalanced parentheses will be caught:
     parser.add_argument('--semiring',   "-r", help='Semiring to use during cascade construction. May be set to "log" or "standard" (tropical).  Use "standard" if your build command includes OTF composition.', default="log" )
     parser.add_argument('--order',      "-O", help='Build N-grams only up to "--order". Default behavior is to build *all* N-grams.', default=0, type=int )
     parser.add_argument('--sil',        "-s", help='Silence monophone symbol.', default="sil")
-    parser.add_argument('--jfsg',      "-j", help='The grammar is a regular expression/JFSG style grammar. Specify "classic" or "new" for the algorithm.', default=None )
+    parser.add_argument('--jfsg',       "-j", help='The grammar is a regular expression/JFSG style grammar. Specify "classic" or "new" for the algorithm.', default=None )
     parser.add_argument('--tiedlist',   "-t", help='Acoustic model tied list. mdef file for Sphinx, tiedlist file for HTK', required=True)
+    parser.add_argument('--normalize',  "-N", help='Normalize arc weights for each state in the LM WFSA.', default=False, action="store_true" )
     parser.add_argument('--verbose',    "-v", help='Verbose mode.', default=False, action="store_true")
     args = parser.parse_args()
 
@@ -764,6 +779,7 @@ Unbalanced parentheses will be caught:
         failure=args.failure,
         basedir=args.basedir,
         convert=args.convert,
+        normalizeG=args.normalize,
         regex=args.jfsg
     )
     if args.no_compile==False:

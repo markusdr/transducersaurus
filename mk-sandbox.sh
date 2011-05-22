@@ -17,5 +17,11 @@ fi
 
 cp python/* ${1}
 
-echo "Copied python prototype build scripts to: ${1}..."
+echo "Compiling 'normalizeG' WFST arc-weight normalizer."
+cd cpp
+g++ -O2 -o normalizeG normalizeG.cpp -lfst
+cp normalizeG ../${1}
+cd ..
+
+echo "Copied python prototype build scripts and normalizeG to: ${1}..."
 echo "See transducersaurus/README.txt for additional testing details."
