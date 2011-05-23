@@ -138,18 +138,22 @@ class GenerateCascade( ):
             re.compile(r"^(log|tropical|standard|trop|el|ew|weights|labels|symbols)$"):2,
             }
         
-        if op in prec:
-            if prec[op]<=prec[top]:
-                return True
+        def check_prec( oper, prec ):
+            if oper in prec:
+                return prec[oper]
             else:
-                return False
+                for key in prec:
+                    if not type(key)==str and key.match(oper):
+                        return prec[key]
+
+        op_prec  = check_prec( op, prec )
+        top_prec = check_prec( top, prec )
+
+        if op_prec <= top_prec:
+            return True
         else:
-            for key in prec:
-                if not type(key)==str and key.match(op):
-                    if prec[key]<=prec[top]:
-                        return True
-                    else:
-                        return False
+            return False
+
         return
 
     def _map_oargs( self, oargs ):
@@ -779,8 +783,8 @@ Unbalanced parentheses will be caught:
         failure=args.failure,
         basedir=args.basedir,
         convert=args.convert,
-        normalizeG=args.normalize,
-        regex=args.jfsg
+        regex=args.jfsg,
+        normalizeG=args.normalize
     )
     if args.no_compile==False:
         cascade.compileFSTs( )
