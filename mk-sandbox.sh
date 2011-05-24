@@ -19,7 +19,7 @@ cp python/* ${1}
 
 echo "Compiling 'normalizeG' WFST arc-weight normalizer."
 cd cpp
-g++ -O2 -o normalizeG normalizeG.cpp -lfst
+g++ -O2 -o normalizeG normalizeG.cpp -lfst -ldl
 cp normalizeG ../${1}
 cd ..
 
