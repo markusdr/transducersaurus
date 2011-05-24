@@ -37,7 +37,7 @@ from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
 from regex2wfst import *
 
-__version__="0.0.0.7"
+__version__="0.0.0.8"
 
 class GenerateCascade( ):
     """
@@ -338,7 +338,7 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
             print command
             os.system( command )
 
-        if l=="G" and r=="T":
+        if (l.endswith("G") or l.endswith("g")) and (r.endswith("T") or r.endswith("t")):
             command = "fstcompose PREFIX.FST1.fst PREFIX.FST2.fst | fstproject --project_output=true - | fstarcsort --sort_type=ilabel - > PREFIX.FST1FST2.fst"
         else:
             command = "fstcompose PREFIX.FST1.fst PREFIX.FST2.fst > PREFIX.FST1FST2.fst"
@@ -386,7 +386,10 @@ fstcompose - PREFIX.FST.fst > PREFIX.dFST.fst"""
         os.system( command )
         
         print "Performing OTF composition..."
-        command = "fstcompose PREFIX.FST1.lkhd.fst PREFIX.FST2.rlbl.fst > PREFIX.FST1FST2.lkhd.fst"
+        if (l.endswith("G") or l.endswith("g")) and (r.endswith("T") or r.endswith("t")):
+            command = "fstcompose PREFIX.FST1.lkhd.fst PREFIX.FST2.rlbl.fst | fstproject --project_output=true - | fstarcsort --sort_type=ilabel - > PREFIX.FST1FST2.lkhd.fst"
+        else:
+            command = "fstcompose PREFIX.FST1.lkhd.fst PREFIX.FST2.rlbl.fst > PREFIX.FST1FST2.lkhd.fst"
         command = command.replace("PREFIX",self.prefix).replace("FST1",l.lower()).replace("FST2",r.lower())
         print command
         os.system( command )
