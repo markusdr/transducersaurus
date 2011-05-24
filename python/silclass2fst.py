@@ -31,7 +31,7 @@ import re, math
 
 class Silclass( ):
 
-    def __init__( self, vocabfile, sil="<sil>", eps="<eps>", silperc=0.117, prefix="silclass", failure=None ):
+    def __init__( self, vocabfile, sil="<sil>", eps="<eps>", silperc=0.117, prefix="silclass", failure=None, sentb="<s>", sente="</s>" ):
         self.vocabfile = vocabfile
         self.sil       = sil
         self.eps       = eps
@@ -39,6 +39,8 @@ class Silclass( ):
         self.nosilperc = 1.0-silperc
         self.vocab     = set([])
         self.failure   = failure
+        self.sentb     = sentb
+        self.sente     = sente
         self.isyms     = set([self.sil])
         self.osyms     = set([self.sil])
         if failure:
@@ -66,7 +68,7 @@ class Silclass( ):
         count = 1
         silclass_fp = open("PREFIX.t.fst.txt".replace("PREFIX",self.prefix),"w")
         for word in self.vocab:
-            if word==self.sil:
+            if word==self.sil or word==self.sentb or word==self.sente or word==self.failure:
                 continue
             silclass_fp.write("%d %d %s %s\n" % (0, count, word, word))
             silclass_fp.write("%d %d %s %s %f\n" % (count, count, self.eps, self.sil, self.log2tropical(self.silperc)))
@@ -74,6 +76,9 @@ class Silclass( ):
             self.isyms.add(word)
             self.osyms.add(word)
             count += 1
+        silclass_fp.write("0 0 %s %s\n" % (self.sentb, self.sentb))
+        silclass_fp.write("0 0 %s %s\n" % (self.sente, self.sente))
+        silclass_fp.write("0 0 %s %s\n" % (self.sil, self.sil))
         if self.failure:
             silclass_fp.write("0 0 %s %s\n" % (self.failure, self.failure))
         silclass_fp.write("0\n")
@@ -102,9 +107,28 @@ class Silclass( ):
 
 
 if __name__=="__main__":
-    import sys
+    import sys, argparse
 
-    silclass = Silclass( sys.argv[1], prefix=sys.argv[2] )
+    example = "%s --dict my.dic --type htk --prefix test" % sys.argv[0]
+
+    parser  = argparse.ArgumentParser( description=example )
+    parser.add_argument('--words',     "-w", help='Input symbols list.', required=True )
+    parser.add_argument('--prefix',    "-p", help='Prefix to be appended to all output files.', default="test" )
+    parser.add_argument('--eps',       "-e", help='Epsilon symbol, defaults to <eps>.', default="<eps>" )
+    parser.add_argument('--sil',       "-s", help='Specify the optional silence marker.  Defaults to <sil>.', default="<sil>" )
+    parser.add_argument('--sentb',     "-b", help='Specify the optional silence marker.  Defaults to <s>.', default="<s>" )
+    parser.add_argument('--sente',     "-n", help='Specify the optional silence marker.  Defaults to </s>.', default="</s>" )
+    parser.add_argument('--failure',   "-f", help="Use failure transitions.  Defaults to 'None'.", default=None )
+    parser.add_argument('--silperc',   "-c", help="Silence weight.  Defaults to 0.117.", default=0.117, type=float )
+    parser.add_argument('--verbose',   "-v", help='Verbose mode.', default=False, action="store_true" )
+    args = parser.parse_args()
+    
+    if args.verbose==True:
+        print "Running with the following arguments."
+        for attr, value in args.__dict__.iteritems():
+            print attr, "=", value
+    
+    silclass = Silclass( args.words, silperc=args.silperc, prefix=args.prefix, sentb=args.sentb, sente=args.sente, eps=args.eps, failure=args.failure )
     silclass.read_vocab( )
     silclass.generate_silclass( )
     silclass.print_all_syms( )
