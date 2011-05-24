@@ -37,7 +37,7 @@ from cd2fstSphinx import ContextDependencySphinx
 from hmm2wfst import hmm2wfst
 from regex2wfst import *
 
-__version__="0.0.0.6"
+__version__="0.0.0.7"
 
 class GenerateCascade( ):
     """
