@@ -112,12 +112,12 @@ class Lexicon( ):
                 self.phones.add(p)
                 self.last_s += 1
                 
-            if self.prons[pron]>1:
-                aux_sym = "#1000%d"%(self.prons[pron]-1)
-                self.isyms.add(aux_sym)
-                self.aux.add(aux_sym)
-                lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.last_s, self.last_s+1, aux_sym, self.eps))
-                self.last_s += 1
+            #if self.prons[pron]>1:
+            aux_sym = "#1000%d"%(self.prons[pron]-1)
+            self.isyms.add(aux_sym)
+            self.aux.add(aux_sym)
+            lexicon_ofp.write("%d\t%d\t%s\t%s\n" % (self.last_s, self.last_s+1, aux_sym, self.eps))
+            self.last_s += 1
             lexicon_ofp.write("%d\n" % (self.last_s))
             self.last_s += 1
         if self.failure:
