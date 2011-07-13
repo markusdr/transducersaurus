@@ -249,10 +249,33 @@ class ContextDependency( ):
         return
 
 if __name__=="__main__":
-    import sys
-    if len(sys.argv)==5:
-        C = ContextDependency( sys.argv[1], sys.argv[2], tiedlist=sys.argv[3], prefix=sys.argv[4] )
-    else:
-        C = ContextDependency( sys.argv[1], sys.argv[2], prefix=sys.argv[3] )
+    import os, sys, argparse
+    example = """./cd2wfst.py --phons phon.list --aux aux.list --prefix test --tiedlist tiedlist"""
+    parser = argparse.ArgumentParser(description=example)
+    parser.add_argument("--phons",     "-P", help="Input list of monophones.", required=True )
+    parser.add_argument("--aux",     "-a", help="Auxiliary symbols list.", default="" )
+    parser.add_argument("--prefix",  "-p", help="Filename prefix.", default="test" )
+    parser.add_argument("--tiedlist", "-t", help="Optional HTK tiedlist.", default=None)
+    parser.add_argument("--eps",     "-e", help="Epsilon symbol.", default="<eps>" )
+    parser.add_argument("--sil",     "-s", help="Sil token.", default="<sil>" )
+    parser.add_argument("--auxout",  "-o", help="Generate input auxiliary symbols. Set to 0, 1, or 2.", default=0, type=int )
+    parser.add_argument("--verbose", "-v", help="Verbose mode.", default=False, action="store_true" )
+    args = parser.parse_args( )
+
+    if args.verbose==True:
+        print "Running with the following arguments:"
+        for attr, value in args.__dict__.iteritems():
+            print attr, "=", value        
+    
+    C = ContextDependency( 
+        args.phons, 
+        args.aux, 
+        tiedlist=args.tiedlist,
+        prefix=args.prefix,
+        eps=args.eps,
+        sil=args.sil,
+        auxout=args.auxout
+        )
     C.generate_deterministic()
     C.print_all_syms()
+
