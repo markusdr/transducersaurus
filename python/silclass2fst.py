@@ -46,6 +46,10 @@ class Silclass( ):
         if failure:
             self.isyms.add(failure)
             self.osyms.add(failure)
+            self.isyms.add(self.sente)
+            self.isyms.add(self.sentb)
+            self.osyms.add(self.sente)
+            self.osyms.add(self.sentb)
         self.prefix    = prefix
 
     def read_vocab( self ):
