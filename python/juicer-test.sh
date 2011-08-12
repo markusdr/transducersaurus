@@ -11,7 +11,7 @@ osyms=${3}
 hsyms=${4}
 hmmdefs=${5}
 
-#dump the sil tokens, fix the '<s>'/'</s>' mismatching...
+#Just run the decoder
 juicer \
     -inputFormat htk \
     -lmScaleFactor 13 \
