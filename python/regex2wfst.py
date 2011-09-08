@@ -57,6 +57,12 @@ class frag( ):
 class Regex2WFST( ):
     """Build up the FSA"""
     def __init__( self, regex_file, prefix="prefix", eps="<eps>" ):
+        self.language = re.compile(r"""\s*(?: 
+                        ([\*\+\?\|]) |            #Operators
+                        ([\)\(])   |              #Parentheses
+                        (\[\s*\-?[0-9\.]+\s*\]) | #Weight 
+                        ([^\[\]\|\(\)\?\+\*\s]+)  #Words/Tokens
+                        )""", re.X )
         self.match = "256"
         self.split = "257"
         self.nstate = 0
@@ -72,22 +78,31 @@ class Regex2WFST( ):
 
     def _load( self, regex_file ):
         ifp = open( regex_file, "r" )
-        regex = ifp.read()
-        regex = re.sub(r"\s+"," ",regex)
-        regex = regex.strip()
-        return regex
+        tokens = [self.eps]
+        for op, paren, weight, word in self.language.findall(ifp.read()):
+            if    paren:  tokens.append(paren)
+            elif  word:   tokens.append(word)
+            elif  weight: tokens[-1] += weight
+            else:         tokens.append(op)
+        return tokens
+
+    def _split_token( self, token ):
+        s = ""; w = ""
+        for op, paren, weight, word in self.language.findall(token):
+            if    word:   s = word
+            elif  weight: w = weight.replace("[","").replace("]","")
+        self.isyms.add(s)
+        return s, w
 
     def re2post( self ):
         """Convert the regex to postfix format."""
         p      = [paren() for i in xrange(100)]
+        g      = 0
         dst    = []
         nalt   = 0
         natom  = 0
-        g      = 0
-        regex  = [self.eps] 
-        regex.extend( self.tokens.split(" ") )
-        for i in xrange(len(regex)):
-            if regex[i]=='(':
+        for i in xrange(len(self.tokens)):
+            if self.tokens[i]=='(':
                 if natom > 1:
                     natom -= 1
                     dst.append('.')
@@ -96,13 +111,13 @@ class Regex2WFST( ):
                 g += 1
                 nalt  = 0
                 natom = 0
-            elif regex[i]=='|':
+            elif self.tokens[i]=='|':
                 if natom==0: return None
                 for k in xrange(natom-1):
                     dst.append('.')
                 natom = 0
                 nalt += 1
-            elif regex[i]==')':
+            elif self.tokens[i]==')':
                 if g==len(p): return None
                 if natom==0 : return None
                 for k in xrange(natom-1):
@@ -114,15 +129,14 @@ class Regex2WFST( ):
                 nalt  = p[g].nalt
                 natom = p[g].natom
                 natom += 1
-            elif regex[i]=='*' or regex[i]=='+' or regex[i]=='?':
+            elif self.tokens[i]=='*' or self.tokens[i]=='+' or self.tokens[i]=='?':
                 if natom == 0: return None
-                dst.append(regex[i])
+                dst.append(self.tokens[i])
             else:
-                self.isyms.add(regex[i])
                 if natom > 1:
                     natom -= 1
                     dst.append('.')
-                dst.append(regex[i])
+                dst.append(self.tokens[i])
                 natom += 1
         for k in xrange(natom-1):
             dst.append('.')
@@ -219,13 +233,11 @@ class Regex2WFST( ):
                 word = pw[1]
             if self.states[s].c == self.match: 
                 self.states[s].c = self.eps
-            try:
-                self.fsa_ofp.write("%s %s %s\n" % (self.states[s].nstate, self.states[s].sout, self.states[s].c.encode("utf8")))
-                if not self.states[s].sout2==None:
-                    self.fsa_ofp.write("%s %s %s\n" % (self.states[s].nstate, self.states[s].sout2, self.states[s].c.encode("utf8")))
-            except:
-                print "Problem: state: %s word: %s" % (str(self.states[s].c.encode("utf8")), str(word.encode("utf8")))
-                sys.exit(-1)
+
+            sym, weight = self._split_token( self.states[s].c )
+            self.fsa_ofp.write("%s %s %s %s\n" % (self.states[s].nstate, self.states[s].sout, sym.encode("utf8"), weight))
+            if not self.states[s].sout2==None:
+                self.fsa_ofp.write("%s %s %s %s\n" % (self.states[s].nstate, self.states[s].sout2, sym.encode("utf8"), weight))
         self.fsa_ofp.close()
 
         self.isyms_ofp.write("%s 0\n" % self.eps)
