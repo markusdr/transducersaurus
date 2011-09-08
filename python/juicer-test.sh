@@ -11,11 +11,11 @@ osyms=${3}
 hsyms=${4}
 hmmdefs=${5}
 
-#dump the sil tokens, fix the '<s>'/'</s>' mismatching...
+#Just run the decoder
 juicer \
     -inputFormat htk \
     -lmScaleFactor 13 \
-    -inputFName jtune/tune-ju-htk-1.scp \
+    -inputFName jtune/tune-ju-htk.scp \
     -htkModelsFName ${hmmdefs} \
     -mainBeam 230 \
     -threading \
@@ -26,7 +26,5 @@ juicer \
     -pauseMonophone "sp" \
     -inSymsFName ${hsyms} \
     -fsmFName ${wfst} \
-    -outSymsFName ${osyms} | \
-    perl -e'while(<>){chomp; @_ = split(/\s+/); shift(@_); pop(@_); $_ = join(" ",@_); s/<sil>//g; $_ = "<s> ".$_." </s>"; s/\s+/ /g; print $_."\n";}'
-
+    -outSymsFName ${osyms} 
 
