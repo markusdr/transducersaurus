@@ -79,11 +79,15 @@ class Regex2WFST( ):
     def _load( self, regex_file ):
         ifp = open( regex_file, "r" )
         tokens = [self.eps]
+        prev = False
         for op, paren, weight, word in self.language.findall(ifp.read()):
-            if    paren:  tokens.append(paren)
-            elif  word:   tokens.append(word)
-            elif  weight: tokens[-1] += weight
-            else:         tokens.append(op)
+            if    paren:  tokens.append(paren); prev=False
+            elif  word:   tokens.append(word);  prev=True
+            elif  weight:
+                #Just ignore weights that don't follow terminals
+                if prev==True: tokens[-1] += weight
+                prev==False
+            else:         tokens.append(op);    prev=False
         return tokens
 
     def _split_token( self, token ):
