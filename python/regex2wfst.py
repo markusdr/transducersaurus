@@ -253,7 +253,7 @@ if __name__=="__main__":
     
     example = "%s --grammar gramm.txt --eps '<eps>' --prefix test" % sys.argv[0]
     parser  = argparse.ArgumentParser( description=example )
-    parser.add_argument('--grammar',  "-g", help='Regex grammar. Tokens must be separated by whitespace.', required=True )
+    parser.add_argument('--grammar',  "-g", help='Regular expression-based grammar.', required=True )
     parser.add_argument('--prefix',   "-p", help='Output files prefix.', default="test" )
     parser.add_argument('--eps',      "-e", help='The epsilson token.', default="<eps>" )
     parser.add_argument('--verbose',  "-v", help='Verbose mode.', default=False, action="store_true" )
