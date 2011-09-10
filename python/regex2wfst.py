@@ -68,28 +68,13 @@ class Regex2WFST( ):
         self.nstate = 0
         self.eps        = eps
         self.prefix     = prefix
-        self.tokens     = self._load( regex_file )
+        self.tokens     = self.parse_grammar_file( regex_file )
         self.fsa_ofp    = open("%s.g.fst.txt" % self.prefix, "w")
         self.isyms_ofp  = open("%s.g.isyms"   % self.prefix, "w")
         self.isyms      = set([])
         self.dst        = None   
         self.e          = None
         self.states     = None
-
-    def _load( self, regex_file ):
-        ifp = open( regex_file, "r" )
-        tokens = [self.eps]
-        prev = [False,""]
-        for op, paren, weight, word in self.language.findall(ifp.read()):
-            if    paren:  tokens.append(paren); prev=[False,paren]
-            elif  word:   tokens.append(word);  prev=[True,word]
-            elif  weight:
-                if prev==True: prev[1]=tokens[-1]; tokens[-1] += weight
-                else: 
-                    raise SyntaxError, "Weight following not-terminal: %s" % prev[1]
-                prev==[False,weight]
-            else:         tokens.append(op);    prev=[False,op]
-        return tokens
 
     def _split_token( self, token ):
         s = ""; w = ""
@@ -250,6 +235,55 @@ class Regex2WFST( ):
             self.isyms_ofp.write("%s %d\n" % (sym, i+1))
         self.isyms_ofp.close()
         return 
+
+    def parse_grammar_file( self, grammar_file ):
+        """Build a regexp grammar up from a JSGF-style definition."""
+        grammar     = ""
+        grammar_id  = "$GRAMMAR" #This is the top-level ID
+        grammar_ifp = open( grammar_file, "r" )
+        subexps = {}
+        for line in grammar_ifp:
+            line = line.strip()
+            line = re.sub(r"\s+"," ",line)
+            if not len(re.findall(r"::=",line))==1:
+                continue
+            id, expr = re.split(r"\s*::=\s*",line)
+            if not re.match(r"^\$[a-zA-Z0-9_\-\.]+$",id):
+                raise SyntaxError, "Subexpression ID: '%s' does not conform to ID syntax: /^\$[a-zA-Z0-9_\-\.]+$/"
+            subexps[id] = expr
+        grammar_ifp.close()
+        
+        if len(subexps.keys())==0:
+            #We already have a single regex expression, just return it
+            grammar = open(grammar_file,"r").read()
+        elif len(subexps.keys())>0 and not grammar_id in subexps:
+            raise SyntaxError, "Top-level expression ID, '$GRAMMAR' not found."
+        else:
+            grammar = self.build_grammar( subexps[grammar_id], subexps )
+
+        tokens = [self.eps]
+        prev = [False,""]
+        for op, paren, weight, word in self.language.findall( grammar ):
+            if    paren:  tokens.append(paren); prev=[False,paren]
+            elif  word:   tokens.append(word);  prev=[True,word]
+            elif  weight:
+                if prev==True: prev[1]=tokens[-1]; tokens[-1] += weight
+                else:          tokens.append(self.eps+weight)
+                prev==[False,weight]
+            else:         tokens.append(op);    prev=[False,op]
+        return tokens
+
+    def build_grammar( self, grammar_part, subexps ):
+        """Recursively build up the full grammar."""
+        id_finder = re.compile(r"""\s*(?: 
+                                 (\$[a-zA-Z0-9_\-\.]+)  #IDs 
+                               )""", re.X )
+        for id in id_finder.findall(grammar_part):
+            if id:
+                grammar_part = grammar_part.replace(id, subexps[id])
+                grammar_part = self.build_grammar( grammar_part, subexps )
+                break
+        return grammar_part
 
 
 
