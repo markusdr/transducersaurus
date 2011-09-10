@@ -267,7 +267,7 @@ class Regex2WFST( ):
             if    paren:  tokens.append(paren); prev=[False,paren]
             elif  word:   tokens.append(word);  prev=[True,word]
             elif  weight:
-                if prev==True: prev[1]=tokens[-1]; tokens[-1] += weight
+                if prev[0]==True: prev[1]=tokens[-1]; tokens[-1] += weight
                 else:          tokens.append(self.eps+weight)
                 prev==[False,weight]
             else:         tokens.append(op);    prev=[False,op]
