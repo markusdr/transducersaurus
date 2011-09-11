@@ -60,7 +60,7 @@ class Regex2WFST( ):
         self.language = re.compile(r"""\s*(?: 
                         ([\*\+\?\|]) |            #Operators
                         ([\)\(])   |              #Parentheses
-                        (\[\s*\-?[0-9\.]+\s*\]) | #Weight 
+                        (\[\s*[+\-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+\-]?\d+)?\s*\]) | #Weight 
                         ([^\[\]\|\(\)\?\+\*\s]+)  #Words/Tokens
                         )""", re.X )
         self.match = "256"
