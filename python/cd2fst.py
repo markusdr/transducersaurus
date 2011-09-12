@@ -64,6 +64,8 @@ class ContextDependency( ):
         return
         
     def _write_mapper_arc( self, mapped, orig ):
+        if mapped==orig and mapped==self.eps:
+            return
         arc = "0 0 MAPPED ORIG\n".replace("MAPPED",mapped).replace("ORIG",orig)
         if not arc in self._mapper_arcs:
             self.mapper_ofp.write(arc)
