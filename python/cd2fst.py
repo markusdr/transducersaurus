@@ -169,7 +169,6 @@ class ContextDependency( ):
         """Make a final state."""
         fssym = lp+','+rp
         self.cd_ofp.write("%s\n" % (fssym))
-        self._make_aux( lp, rp )
         return
 
     def _make_aux( self, lp, rp ):
