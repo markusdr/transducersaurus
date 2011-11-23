@@ -225,9 +225,9 @@ class Regex2WFST( ):
                 self.states[s].c = self.eps
 
             sym, weight = self._split_token( self.states[s].c )
-            self.fsa_ofp.write("%s %s %s %s\n" % (self.states[s].nstate, self.states[s].sout, sym.encode("utf8"), weight))
+            self.fsa_ofp.write("%s %s %s %s\n" % (self.states[s].nstate, self.states[s].sout, sym, weight))
             if not self.states[s].sout2==None:
-                self.fsa_ofp.write("%s %s %s %s\n" % (self.states[s].nstate, self.states[s].sout2, sym.encode("utf8"), weight))
+                self.fsa_ofp.write("%s %s %s %s\n" % (self.states[s].nstate, self.states[s].sout2, sym, weight))
         self.fsa_ofp.close()
 
         self.isyms_ofp.write("%s 0\n" % self.eps)
