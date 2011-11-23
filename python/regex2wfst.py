@@ -65,6 +65,9 @@ class Regex2WFST( ):
                         )""", re.X )
         self.match = "256"
         self.split = "257"
+        self.escapes   = {}
+        self.unescapes = {}
+        self.seed = 38918274029875        
         self.nstate = 0
         self.eps        = eps
         self.prefix     = prefix
@@ -76,11 +79,33 @@ class Regex2WFST( ):
         self.e          = None
         self.states     = None
 
+    def _escape_chars( self, grammar ):
+        esc_regex = re.compile(r"(?:\\.)")
+        
+        for op in esc_regex.findall(grammar):
+            if not op in self.escapes:
+                self.escapes[op]     = self.seed
+                self.unescapes[self.seed] = op
+                self.seed += 1
+        
+        for op in self.escapes:
+            grammar = grammar.replace(op,str(self.escapes[op]))
+        return grammar
+
+    def _unescape_chars( self, grammar ):
+        for op in self.unescapes:
+            grammar = grammar.replace(str(op),self.unescapes[op])
+        grammar = grammar.replace("\\\\","283749")
+        grammar = grammar.replace("\\","")
+        grammar = grammar.replace("283749","\\\\")
+        return grammar
+            
     def _split_token( self, token ):
         s = ""; w = ""
         for op, paren, weight, word in self.language.findall(token):
             if    word:   s = word
             elif  weight: w = weight.replace("[","").replace("]","")
+        s = self._unescape_chars( s )
         self.isyms.add(s)
         return s, w
 
@@ -250,7 +275,7 @@ class Regex2WFST( ):
             id, expr = re.split(r"\s*::=\s*",line)
             if not re.match(r"^\$[a-zA-Z0-9_\-\.]+$",id):
                 raise SyntaxError, "Subexpression ID: '%s' does not conform to ID syntax: /^\$[a-zA-Z0-9_\-\.]+$/"
-            subexps[id] = expr
+            subexps[id] = self._escape_chars( expr )
         grammar_ifp.close()
         
         if len(subexps.keys())==0:
